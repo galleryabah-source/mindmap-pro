@@ -2,7 +2,7 @@
 
 This roadmap converts the product brainstorm into a sequenced, testable delivery plan. Estimates are planning ranges, not delivery promises. Brainstorm items remain proposals until implemented and verified.
 
-See [Brainstorm Backlog](BRAINSTORM_BACKLOG.md) for the full feature inventory, UX direction, template categories, engineering guardrails and P0–P4 prioritization. See [Product Strategy and Design System](PRODUCT_STRATEGY_AND_DESIGN_SYSTEM.md) for information architecture and visual standards.
+See [Brainstorm Backlog](BRAINSTORM_BACKLOG.md) for the full feature inventory, UX direction, template categories, engineering guardrails and P0–P4 prioritization. See [Product Strategy and Design System](PRODUCT_STRATEGY_AND_DESIGN_SYSTEM.md) for information architecture and visual standards. See [Multi-Platform Delivery Strategy](MULTI_PLATFORM_DELIVERY.md) for Android and Windows desktop packaging, architecture and release gates.
 
 ## P0 — Phase 0: Product and technical validation (1–2 weeks)
 
@@ -100,6 +100,39 @@ See [Brainstorm Backlog](BRAINSTORM_BACKLOG.md) for the full feature inventory, 
 - Every feature includes acceptance criteria, unit/integration/E2E tests, responsive/accessibility states, telemetry, documentation and recovery considerations.
 - Keep the main branch releasable and do not claim implementation or production readiness before evidence exists.
 
+## Phase 9 — Android application
+
+Start after the web MVP, API contracts and shared graph/domain packages are stable.
+
+- Evaluate and validate a Capacitor-based Android shell on real devices.
+- Reuse the canonical API, auth model, graph schema, validation rules and shared design tokens.
+- Add native integrations only where needed: secure token storage, document picker/share sheet, file handling and network/lifecycle awareness.
+- Test touch and keyboard interactions, large maps, save/reconnect, lifecycle changes, permissions and supported Android versions.
+- Configure secure signing and CI artifacts; produce an APK for controlled distribution and/or AAB for Google Play.
+
+**Exit gate:** reproducible signed build installs and upgrades on supported test devices; critical editor, auth, persistence, import/export and recovery tests pass.
+
+## Phase 10 — Windows desktop application (.exe)
+
+Start after shared API/domain contracts stabilize; can overlap with Android packaging if core quality gates remain green.
+
+- Evaluate Tauri first for a lightweight Windows shell; consider Electron only if measured requirements justify it.
+- Add native file open/save and drag-and-drop through a narrow adapter; other desktop features require product justification.
+- Build a Windows installer, configure update/signing strategy, and test install, upgrade, rollback, uninstall and clean-user startup.
+- Keep database and service-role secrets out of the client; use the same authenticated API and authorization model as web.
+- Add Windows smoke tests and publish versioned artifacts with checksums and release notes.
+
+**Exit gate:** reproducible installer passes installation/update/uninstall and smoke tests on supported Windows versions; signing and release procedure documented.
+
+## Phase 11 — Cross-platform release and maintenance
+
+- Maintain separate web, Android and Windows CI build/test lanes with shared domain, schema and API contract tests.
+- Verify backward-compatible API evolution and minimum supported client versions.
+- Document platform support policy, update cadence, crash/diagnostic privacy and end-of-support process.
+- Test migration compatibility, backup recovery and cross-platform data consistency before public release.
+
+**Exit gate:** all distributable artifacts are built, signed where applicable, installed and smoke-tested; no platform is described as released without evidence.
+
 ## Critical path
 
-Repository/CI → identity and tenant model → graph invariants → editor/persistence → history and import/export → premium UX/templates → secure document/AI pipeline → collaboration/presentation → validated SaaS operations → production hardening.
+Repository/CI → identity and tenant model → graph invariants → editor/persistence → history and import/export → premium UX/templates → secure document/AI pipeline → collaboration/presentation → production hardening → shared cross-platform packages/API contracts → Android alpha → Windows desktop alpha → coordinated multi-platform release.
