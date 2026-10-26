@@ -34,6 +34,14 @@ A dependable workspace for visual thinking, hierarchical knowledge exploration, 
 - [Delivery plan](docs/DELIVERY_PLAN.md)
 - [Architecture decisions](docs/DECISIONS.md)
 
+## Current platform baseline
+- GitHub: source repository, pull requests, CI/CD and release gates
+- Cloudflare: DNS, TLS/edge proxy and applicable security controls
+- Supabase: managed PostgreSQL; optional Auth and Storage behind adapters
+- Next.js runs on a compatible Node.js host; do not assume Cloudflare Workers are a drop-in runtime
+
+See [platform architecture](docs/ARCHITECTURE.md) and [architecture decisions](docs/DECISIONS.md).
+
 ## Proposed stack
 - Web: Next.js App Router, React, TypeScript
 - API: Next.js Route Handlers initially; Node.js workers for heavy jobs
