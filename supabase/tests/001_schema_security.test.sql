@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(20);
+select plan(22);
 
 select has_table('public', 'workspaces', 'workspaces table exists');
 select has_table('public', 'workspace_members', 'workspace_members table exists');
@@ -22,7 +22,9 @@ select ok((select relrowsecurity from pg_class where oid = 'public.audit_events'
 select has_function('public', 'is_workspace_member', array['uuid'], 'workspace membership helper exists');
 select has_function('public', 'has_workspace_role', array['uuid', 'text[]'], 'workspace role helper exists');
 select has_function('public', 'create_workspace', array['text', 'text'], 'atomic workspace creation RPC exists');
+select has_trigger('public', 'topics', 'topics_prevent_parent_cycle', 'topic hierarchy cycle guard exists');
 
+select ok(not has_table_privilege('authenticated', 'public.workspace_members', 'INSERT'), 'authenticated role cannot directly change membership');
 select ok(not has_table_privilege('authenticated', 'public.audit_events', 'INSERT'), 'authenticated role cannot directly insert audit events');
 select ok(not has_table_privilege('authenticated', 'public.map_revisions', 'UPDATE'), 'authenticated role cannot update revisions');
 select ok(not has_table_privilege('authenticated', 'public.map_revisions', 'DELETE'), 'authenticated role cannot delete revisions');
