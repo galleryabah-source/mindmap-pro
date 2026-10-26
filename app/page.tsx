@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   addEdge,
   Background,
@@ -47,6 +47,26 @@ const STORAGE_KEY = "mindmap-pro:local-draft:v1";
 
 type SavedMap = { nodes: Node[]; edges: Edge[]; title: string };
 
+function isSavedMap(value: unknown): value is SavedMap {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Partial<SavedMap>;
+  if (typeof candidate.title !== "string" || !Array.isArray(candidate.nodes) || !Array.isArray(candidate.edges)) return false;
+  const nodeIds = new Set<string>();
+  for (const item of candidate.nodes) {
+    if (!item || typeof item !== "object") return false;
+    const node = item as Node;
+    if (typeof node.id !== "string" || !node.position || typeof node.position.x !== "number" || typeof node.position.y !== "number" || !node.data || typeof node.data !== "object") return false;
+    nodeIds.add(node.id);
+  }
+  for (const item of candidate.edges) {
+    if (!item || typeof item !== "object") return false;
+    const edge = item as Edge;
+    if (typeof edge.id !== "string" || typeof edge.source !== "string" || typeof edge.target !== "string") return false;
+    if (!nodeIds.has(edge.source) || !nodeIds.has(edge.target)) return false;
+  }
+  return true;
+}
+
 export default function HomePage() {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
@@ -62,6 +82,8 @@ export default function HomePage() {
   const [history, setHistory] = useState<SavedMap[]>([]);
   const [future, setFuture] = useState<SavedMap[]>([]);
   const [ready, setReady] = useState(false);
+  const [notice, setNotice] = useState("");
+  const importInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     try {
@@ -154,10 +176,22 @@ export default function HomePage() {
   const deleteSelected = useCallback(() => {
     if (!selectedId || selectedId === "root") return;
     remember();
-    setNodes((current) => current.filter((node) => node.id !== selectedId));
-    setEdges((current) => current.filter((edge) => edge.source !== selectedId && edge.target !== selectedId));
+    const removedIds = new Set<string>([selectedId]);
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (const edge of edges) {
+        if (removedIds.has(edge.source) && !removedIds.has(edge.target)) {
+          removedIds.add(edge.target);
+          changed = true;
+        }
+      }
+    }
+    setNodes((current) => current.filter((node) => !removedIds.has(node.id)));
+    setEdges((current) => current.filter((edge) => !removedIds.has(edge.source) && !removedIds.has(edge.target)));
     setSelectedId("root");
-  }, [selectedId, remember, setNodes, setEdges]);
+    setNotice("Topik dan subcabangnya dihapus. Gunakan Undo untuk memulihkan.");
+  }, [selectedId, edges, remember, setNodes, setEdges]);
 
   const undo = useCallback(() => {
     if (!history.length) return;
@@ -178,6 +212,24 @@ export default function HomePage() {
     setTitle(next.title);
     setFuture((current) => current.slice(0, -1));
   }, [future, snapshot, setNodes, setEdges]);
+
+  const importJson = useCallback(async (file?: File) => {
+    if (!file) return;
+    try {
+      const parsed: unknown = JSON.parse(await file.text());
+      if (!isSavedMap(parsed)) throw new Error("Struktur file tidak valid atau koneksi merujuk ke topik yang tidak ada.");
+      remember();
+      setNodes(parsed.nodes);
+      setEdges(parsed.edges);
+      setTitle(parsed.title);
+      setSelectedId(parsed.nodes.some((node) => node.id === "root") ? "root" : parsed.nodes[0]?.id ?? null);
+      setNotice("Impor JSON berhasil divalidasi dan dimuat.");
+    } catch (error) {
+      setNotice(error instanceof Error ? "Impor gagal: " + error.message : "Impor gagal karena file tidak valid.");
+    } finally {
+      if (importInputRef.current) importInputRef.current.value = "";
+    }
+  }, [remember, setNodes, setEdges]);
 
   const exportJson = useCallback(() => {
     const blob = new Blob([JSON.stringify({ version: 1, title, nodes, edges }, null, 2)], { type: "application/json" });
@@ -228,13 +280,15 @@ export default function HomePage() {
             <button className="icon-button" aria-label="Undo" onClick={undo} disabled={!history.length}><Undo2 size={17} /></button>
             <button className="icon-button" aria-label="Redo" onClick={redo} disabled={!future.length}><Redo2 size={17} /></button>
             <div className="topbar-divider" />
+            <button className="secondary-button hide-small" onClick={() => importInputRef.current?.click()}><FolderOpen size={15} /> Impor</button>
             <button className="secondary-button hide-small" onClick={exportJson}><ArrowDownToLine size={16} /> Ekspor</button>
+            <input ref={importInputRef} type="file" accept="application/json,.json" hidden onChange={(event) => void importJson(event.currentTarget.files?.[0])} />
             <button className="primary-button" onClick={() => { navigator.clipboard?.writeText(window.location.href).catch(() => undefined); }}><Share2 size={15} /> Bagikan</button>
           </div>
         </header>
 
         <div className="map-toolbar">
-          <div className="map-title-group"><input className="map-title-input" value={title} onChange={(event) => setTitle(event.target.value)} aria-label="Nama mind map" /><div className="map-meta"><span className="privacy-dot" /> Pribadi <span className="meta-separator">·</span> Diperbarui otomatis</div></div>
+          <div className="map-title-group"><input className="map-title-input" value={title} onFocus={remember} onChange={(event) => setTitle(event.target.value)} aria-label="Nama mind map" /><div className="map-meta"><span className="privacy-dot" /> Pribadi <span className="meta-separator">·</span> Diperbarui otomatis</div></div>
           <div className="map-tools">
             <button className="tool-button" onClick={() => addTopic(false)}><Plus size={16} /><span>Topik</span></button>
             <button className="tool-button" onClick={() => addTopic(true)}><GitBranch size={16} /><span>Cabang</span></button>
@@ -270,7 +324,7 @@ export default function HomePage() {
             <div className="panel-heading"><div><span className="panel-eyebrow">PROPERTI</span><h2>Topik</h2></div><button className="icon-button tiny" aria-label="Tutup properti" onClick={() => setInspectorOpen(false)}><X size={15} /></button></div>
             {selectedNode ? <div className="inspector-content">
               <div className="topic-preview"><div className="topic-preview-icon"><GitBranch size={18} /></div><div><strong>{selectedId === "root" ? "Topik utama" : "Topik cabang"}</strong><span>ID: {selectedId.slice(0, 15)}</span></div></div>
-              <label className="field-label">Nama topik</label><textarea className="topic-name-field" rows={3} value={selectedLabel} onChange={(event) => renameSelected(event.target.value)} />
+              <label className="field-label">Nama topik</label><textarea className="topic-name-field" rows={3} value={selectedLabel} onFocus={remember} onChange={(event) => renameSelected(event.target.value)} />
               <div className="field-label field-label-row">Informasi <span className="optional-label">OPSIONAL</span></div><textarea className="notes-field" rows={4} placeholder="Tambahkan catatan, definisi, atau konteks…" />
               <div className="inspector-divider" />
               <div className="field-label">Aksi cepat</div>
@@ -282,10 +336,10 @@ export default function HomePage() {
           </aside>}
         </div>
 
-        <footer className="statusbar"><div><span className="status-check"><Check size={11} /></span> Draft lokal <span className="status-divider">/</span> {nodes.length} topik</div><div className="status-right"><span>100%</span><span className="status-divider">·</span><span>Autosave perangkat</span><button onClick={exportJson}><ArrowDownToLine size={13} /> JSON</button></div></footer>
+        <footer className="statusbar"><div><span className="status-check"><Check size={11} /></span> {notice || "Draft lokal"} <span className="status-divider">/</span> {nodes.length} topik</div><div className="status-right"><span>100%</span><span className="status-divider">·</span><span>Autosave perangkat</span><button onClick={exportJson}><ArrowDownToLine size={13} /> JSON</button></div></footer>
       </section>
 
-      {mobilePanel !== "none" && <div className="mobile-sheet-backdrop" onClick={() => setMobilePanel("none")}><section className="mobile-sheet" onClick={(event) => event.stopPropagation()}><div className="sheet-handle" /><div className="sheet-header"><strong>{mobilePanel === "outline" ? "Outline" : "Properti topik"}</strong><button className="icon-button" onClick={() => setMobilePanel("none")}><X size={17} /></button></div>{mobilePanel === "outline" ? <div className="sheet-list">{nodes.map((node) => <button key={node.id} onClick={() => { setSelectedId(node.id); setMobilePanel("inspector"); }}><GitBranch size={15} />{String(node.data.label ?? "Topik")}<ArrowRight size={14} /></button>)}</div> : <div className="sheet-editor"><label className="field-label">Nama topik</label><textarea rows={2} value={selectedLabel} onChange={(event) => renameSelected(event.target.value)} /><button className="primary-button" onClick={() => addTopic(true)}><Plus size={15} /> Tambah cabang</button></div>}</section></div>}
+      {mobilePanel !== "none" && <div className="mobile-sheet-backdrop" onClick={() => setMobilePanel("none")}><section className="mobile-sheet" onClick={(event) => event.stopPropagation()}><div className="sheet-handle" /><div className="sheet-header"><strong>{mobilePanel === "outline" ? "Outline" : "Properti topik"}</strong><button className="icon-button" onClick={() => setMobilePanel("none")}><X size={17} /></button></div>{mobilePanel === "outline" ? <div className="sheet-list">{nodes.map((node) => <button key={node.id} onClick={() => { setSelectedId(node.id); setMobilePanel("inspector"); }}><GitBranch size={15} />{String(node.data.label ?? "Topik")}<ArrowRight size={14} /></button>)}</div> : <div className="sheet-editor"><label className="field-label">Nama topik</label><textarea rows={2} value={selectedLabel} onFocus={remember} onChange={(event) => renameSelected(event.target.value)} /><button className="primary-button" onClick={() => addTopic(true)}><Plus size={15} /> Tambah cabang</button></div>}</section></div>}
     </main>
   );
 }
