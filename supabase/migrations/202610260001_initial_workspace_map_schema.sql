@@ -249,12 +249,6 @@ create policy workspace_members_select_same_workspace on public.workspace_member
 for select to authenticated
 using (public.is_workspace_member(workspace_id));
 
-drop policy if exists workspace_members_admin_manage on public.workspace_members;
-create policy workspace_members_admin_manage on public.workspace_members
-for all to authenticated
-using (public.has_workspace_role(workspace_id, array['owner', 'admin']))
-with check (public.has_workspace_role(workspace_id, array['owner', 'admin']));
-
 drop policy if exists maps_select_member on public.maps;
 create policy maps_select_member on public.maps
 for select to authenticated
@@ -330,14 +324,6 @@ for select to authenticated
 using (exists (select 1 from public.maps m where m.id = map_id and public.is_workspace_member(m.workspace_id)));
 
 -- Immutable revisions: no direct UPDATE or DELETE policy is intentionally granted.
-drop policy if exists map_revisions_insert_editor on public.map_revisions;
-create policy map_revisions_insert_editor on public.map_revisions
-for insert to authenticated
-with check (
-  created_by = (select auth.uid())
-  and exists (select 1 from public.maps m where m.id = map_id and public.has_workspace_role(m.workspace_id, array['owner', 'admin', 'editor']))
-);
-
 drop policy if exists audit_events_select_admin on public.audit_events;
 create policy audit_events_select_admin on public.audit_events
 for select to authenticated
@@ -346,12 +332,15 @@ using (public.has_workspace_role(workspace_id, array['owner', 'admin']));
 -- No client INSERT/UPDATE/DELETE policies for audit_events.
 -- The create_workspace RPC is security-definer and writes its own audit record.
 
+revoke all on public.workspaces, public.workspace_members, public.maps, public.topics,
+  public.map_edges, public.map_revisions, public.audit_events from anon, authenticated;
+
 grant select, update on public.workspaces to authenticated;
 grant select on public.workspace_members to authenticated;
 grant select, insert, update, delete on public.maps to authenticated;
 grant select, insert, update, delete on public.topics to authenticated;
 grant select, insert, update, delete on public.map_edges to authenticated;
-grant select, insert on public.map_revisions to authenticated;
+grant select on public.map_revisions to authenticated;
 grant select on public.audit_events to authenticated;
 
 commit;
