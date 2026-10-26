@@ -72,7 +72,6 @@ export default function HomePage() {
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [title, setTitle] = useState("Ruang ide saya");
   const [selectedId, setSelectedId] = useState<string | null>("root");
-  const [selectedLabel, setSelectedLabel] = useState("MindMap Pro");
   const [searchTerm, setSearchTerm] = useState("");
   const [saveState, setSaveState] = useState<"loading" | "saved">("loading");
   const [dark, setDark] = useState(false);
@@ -86,25 +85,28 @@ export default function HomePage() {
   const importInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw) as SavedMap;
-        if (Array.isArray(parsed.nodes) && Array.isArray(parsed.edges)) {
-          setNodes(parsed.nodes);
-          setEdges(parsed.edges);
-          if (typeof parsed.title === "string") setTitle(parsed.title);
+    const handle = window.setTimeout(() => {
+      try {
+        const raw = window.localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed: unknown = JSON.parse(raw);
+          if (isSavedMap(parsed)) {
+            setNodes(parsed.nodes);
+            setEdges(parsed.edges);
+            setTitle(parsed.title);
+          }
         }
+      } catch {
+        // A malformed local draft must not prevent the editor from opening.
+      } finally {
+        setReady(true);
       }
-    } catch {
-      // A malformed local draft must not prevent the editor from opening.
-    }
-    setReady(true);
+    }, 0);
+    return () => window.clearTimeout(handle);
   }, [setEdges, setNodes]);
 
   useEffect(() => {
     if (!ready) return;
-    setSaveState("loading");
     const handle = window.setTimeout(() => {
       try {
         const payload: SavedMap = { nodes, edges, title };
@@ -122,12 +124,7 @@ export default function HomePage() {
     [nodes, selectedId],
   );
 
-  useEffect(() => {
-    if (selectedNode) {
-      const label = selectedNode.data.label;
-      setSelectedLabel(typeof label === "string" ? label : "Topik baru");
-    }
-  }, [selectedNode]);
+  const selectedLabel = selectedNode ? String(selectedNode.data.label ?? "Topik baru") : "";
 
   const snapshot = useCallback((): SavedMap => ({ nodes, edges, title }), [nodes, edges, title]);
 
@@ -162,13 +159,11 @@ export default function HomePage() {
       setEdges((current) => [...current, { id: `edge-${parent.id}-${id}`, source: parent.id, target: id, type: "smoothstep", style: { stroke: "#9294bd", strokeWidth: 2 } }]);
     }
     setSelectedId(id);
-    setSelectedLabel("Topik baru");
     setInspectorOpen(true);
     setMobilePanel("inspector");
   }, [nodes, selectedId, remember, setNodes, setEdges, dark]);
 
   const renameSelected = useCallback((value: string) => {
-    setSelectedLabel(value);
     if (!selectedId) return;
     setNodes((current) => current.map((node) => node.id === selectedId ? { ...node, data: { ...node.data, label: value } } : node));
   }, [selectedId, setNodes]);
