@@ -4,7 +4,7 @@ MindMap Pro is a web-first visual knowledge workspace designed to grow into Andr
 
 ## Current implementation milestone
 
-The first web application foundation introduces a responsive mind-map editor shell with node selection, topic creation, connections, rename, deletion of non-root nodes, undo/redo, local draft persistence and JSON export. This is an early client-side vertical slice; authentication, server persistence, AI workflows, template engine and native platform packages are not yet implemented.
+The first web application foundation introduces a responsive mind-map editor shell with node selection, topic creation, connections, rename, deletion of non-root nodes, undo/redo, local draft persistence, validated JSON import/export and map-document validation tests. This is an early client-side vertical slice; authentication, server persistence, AI workflows, template engine and native platform packages are not yet implemented.
 
 ## Technology
 
@@ -33,6 +33,7 @@ Open http://localhost:3000.
 ```bash
 npm run lint
 npm run typecheck
+npm test
 npm run build
 ```
 
@@ -51,4 +52,6 @@ npm run build
 - [Multi-platform delivery strategy](docs/MULTI_PLATFORM_DELIVERY.md)
 - [Roadmap](docs/ROADMAP.md)
 - [Supabase foundation](docs/SUPABASE_FOUNDATION.md)
+- [Database migration](supabase/migrations/202610260001_initial_workspace_map_schema.sql)
+- [Map document validator](lib/domain/map-document.ts)
 - [Architecture](docs/ARCHITECTURE.md)
