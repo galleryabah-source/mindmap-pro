@@ -323,7 +323,7 @@ export default function HomePage() {
           {inspectorOpen && <aside className="inspector-panel">
             <div className="panel-heading"><div><span className="panel-eyebrow">PROPERTI</span><h2>Topik</h2></div><button className="icon-button tiny" aria-label="Tutup properti" onClick={() => setInspectorOpen(false)}><X size={15} /></button></div>
             {selectedNode ? <div className="inspector-content">
-              <div className="topic-preview"><div className="topic-preview-icon"><GitBranch size={18} /></div><div><strong>{selectedId === "root" ? "Topik utama" : "Topik cabang"}</strong><span>ID: {selectedId.slice(0, 15)}</span></div></div>
+              <div className="topic-preview"><div className="topic-preview-icon"><GitBranch size={18} /></div><div><strong>{selectedId === "root" ? "Topik utama" : "Topik cabang"}</strong><span>ID: {(selectedId ?? "unknown").slice(0, 15)}</span></div></div>
               <label className="field-label">Nama topik</label><textarea className="topic-name-field" rows={3} value={selectedLabel} onFocus={remember} onChange={(event) => renameSelected(event.target.value)} />
               <div className="field-label field-label-row">Informasi <span className="optional-label">OPSIONAL</span></div><textarea className="notes-field" rows={4} placeholder="Tambahkan catatan, definisi, atau konteks…" />
               <div className="inspector-divider" />
