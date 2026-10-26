@@ -23,6 +23,31 @@ flowchart TB
   Workers --> Obs
 ```
 
+## Current platform allocation: GitHub + Cloudflare + Supabase
+
+This is the initial deployment baseline, with provider-specific access kept behind configuration and adapters.
+
+- **GitHub:** canonical source repository, pull requests, issues, code review, GitHub Actions CI, security/dependency checks and deployment workflow definitions. Use protected release gates where repository settings allow.
+- **Cloudflare:** DNS and domain management; proxy/WAF and rate-limiting capabilities where supported by the selected plan; TLS configuration; optional caching for public static assets; and the edge layer for the public application hostname. Do not cache authenticated or tenant-private responses by default.
+- **Supabase:** managed PostgreSQL as the canonical relational store. Supabase Auth may be used for identity/session management; Supabase Storage may be used for uploads and generated artifacts if its access policies and operational needs fit. Treat Supabase Realtime as an optional adapter, not a requirement of the canonical graph engine.
+- **Application runtime:** deploy the Next.js Node.js application to a compatible Node.js hosting target. Cloudflare may proxy traffic to this runtime; do not assume every Next.js Node.js capability runs unchanged on Cloudflare Workers. If a Worker is introduced later, it must be a distinct edge adapter with compatibility tests.
+- **Secrets:** store runtime secrets in the chosen deployment platform's secret manager; keep only variable names and safe placeholders in GitHub. Never commit service-role keys, database passwords, private tokens or production URLs containing credentials.
+
+### Request and data flow
+1. Developer changes flow through GitHub pull request and CI checks.
+2. The approved build is deployed to the selected Node.js runtime.
+3. User requests arrive through Cloudflare DNS/proxy and TLS.
+4. The application verifies identity and authorization on the server, then accesses Supabase/PostgreSQL using the least-privilege connection appropriate for the operation.
+5. Upload and asynchronous-job paths use configured storage/queue adapters; public caching is restricted to explicitly cache-safe resources.
+
+### Provider boundaries and portability
+- Use a repository/service interface for persistence, an identity interface for authentication, a blob-storage interface for files and an edge/deployment configuration boundary.
+- Keep domain services independent of Supabase SDK types. Convert provider responses into application-owned types.
+- Database schema and migrations remain versioned in this repository; Supabase is the hosted database target, not the only copy of the schema.
+- Enforce tenant isolation using server authorization and carefully tested PostgreSQL RLS policies where appropriate. Never assume RLS alone replaces authorization tests.
+- Have a documented path to migrate storage, auth, database hosting, or edge protection independently.
+- Plan backups and test restore procedures for the Supabase database and object storage before production launch.
+
 ## Technology policy
 - Web application: Next.js App Router, React and strict TypeScript; use stable releases pinned in the lockfile.
 - Runtime: supported Node.js LTS at implementation time; avoid experimental runtime features on the critical path.
