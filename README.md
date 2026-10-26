@@ -11,7 +11,7 @@ The first web application foundation introduces a responsive mind-map editor she
 - Next.js App Router, React and TypeScript
 - `@xyflow/react` for interactive graph rendering
 - Node.js 22 in CI
-- Supabase PostgreSQL planned as the canonical persistence layer; not yet connected
+- Supabase PostgreSQL schema and SSR client foundation added; no project is linked and cloud persistence is not enabled yet
 - Capacitor Android and Tauri Windows packaging planned after shared API/domain contracts stabilize
 
 ## Requirements
@@ -40,7 +40,8 @@ npm run build
 
 - Current editor draft persistence is browser-local and device-specific. It is not cloud sync or a backup.
 - Do not place Supabase service-role keys, database URLs or other privileged secrets in client code.
-- Server persistence must be added with authenticated, server-enforced workspace authorization and versioned migrations.
+- The initial schema migration is in `supabase/migrations/`; apply it only to a dedicated MindMap Pro project after verifying its project ref.
+- Server persistence must use authenticated, server-enforced workspace authorization and versioned migrations.
 - Do not treat the app as production-ready until CI, authorization, persistence/recovery, accessibility, security and backup/restore gates pass.
 
 ## Product documentation
@@ -49,4 +50,5 @@ npm run build
 - [Premium UX and template system](docs/PRODUCT_STRATEGY_AND_DESIGN_SYSTEM.md)
 - [Multi-platform delivery strategy](docs/MULTI_PLATFORM_DELIVERY.md)
 - [Roadmap](docs/ROADMAP.md)
+- [Supabase foundation](docs/SUPABASE_FOUNDATION.md)
 - [Architecture](docs/ARCHITECTURE.md)
