@@ -21,6 +21,7 @@ A dependable workspace for visual thinking, hierarchical knowledge exploration, 
 
 ## Documentation
 - [Product requirements](docs/PRODUCT_REQUIREMENTS.md)
+- [Brainstorm backlog and feature priorities](docs/BRAINSTORM_BACKLOG.md)
 - [Product strategy, premium UX and template library](docs/PRODUCT_STRATEGY_AND_DESIGN_SYSTEM.md)
 - [Feature parity matrix](docs/FEATURE_PARITY.md)
 - [Architecture](docs/ARCHITECTURE.md)
