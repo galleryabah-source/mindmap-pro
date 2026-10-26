@@ -20,3 +20,15 @@
 
 ## ADR-007 — Verify current feature entitlements
 **Status:** Proposed. Do not state assumed plan limits as facts until verified against current official documentation.
+
+
+## ADR-008 — Initial platform providers: GitHub, Cloudflare and Supabase
+**Status:** Accepted as initial baseline; provider details remain configuration-driven.
+
+- GitHub is the source of truth for code, reviews, issues and CI/CD workflow definitions.
+- Cloudflare provides DNS, TLS/edge proxy and applicable security/rate-limiting controls. Private or authenticated data is not cached by default.
+- Supabase provides managed PostgreSQL; Auth and Storage may be enabled when useful, behind application-owned boundaries.
+- The Next.js app is deployed to a compatible Node.js runtime. Cloudflare Workers are not assumed to be a drop-in runtime for the Node.js app.
+- Secrets are stored in deployment secret management and never committed.
+- Schema migrations, authorization, backups, restore drills and tenant-isolation tests remain repository-controlled release gates.
+- Revisit this ADR if measured constraints, contracts, pricing or technology changes justify a change. Provider abstractions must permit replacement without rewriting domain logic.
