@@ -23,6 +23,12 @@ Migration `supabase/migrations/202610260001_initial_workspace_map_schema.sql` de
 - Do not place service-role keys or database credentials in `NEXT_PUBLIC_*` variables.
 - Do not run this migration against the unrelated existing `MTA DETENI` or `galleryabah` projects.
 
+## Application integration foundation
+- `lib/supabase/client.ts` creates the browser client using only the publishable key.
+- `lib/supabase/server.ts` creates the cookie-aware server client.
+- `proxy.ts` refreshes the session via `getClaims()` when public Supabase configuration is present; it does not grant resource access by itself.
+- The `.env.example` file intentionally contains only public connection values. Never add service-role or secret keys to the browser environment.
+
 ## Apply and validate
 1. Create/identify a dedicated Supabase project named MindMap Pro and verify its project ref.
 2. Install Supabase CLI and link the repository to that exact project.
