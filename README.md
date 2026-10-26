@@ -1,62 +1,52 @@
-# MindMap Pro — Product & Engineering Blueprint
+# MindMap Pro — Visual Knowledge Studio
 
-An original web-first mind-mapping and knowledge workspace targeting feature parity with publicly documented premium capabilities of products such as Mindomo. This project uses its own branding, code, interaction design and assets; it does not copy proprietary code or protected assets.
+MindMap Pro is a web-first visual knowledge workspace designed to grow into Android and Windows desktop applications while sharing a canonical domain model and backend.
 
-## Status
-- Blueprint: committed in this repository
-- Implementation: not started
-- Production readiness: not assessed
-- Target stack: Next.js App Router, React, TypeScript, Node.js, PostgreSQL
+## Current implementation milestone
 
-## Vision
-A dependable workspace for visual thinking, hierarchical knowledge exploration, document-to-map workflows, AI-assisted drafting, collaboration, presentation, task planning and export.
+The first web application foundation introduces a responsive mind-map editor shell with node selection, topic creation, connections, rename, deletion of non-root nodes, undo/redo, local draft persistence and JSON export. This is an early client-side vertical slice; authentication, server persistence, AI workflows, template engine and native platform packages are not yet implemented.
 
-## Principles
-1. Data integrity and recoverability first.
-2. Stable topic IDs; hierarchy and cross-links are distinct.
-3. AI-generated content remains a proposal until user acceptance.
-4. Preserve source provenance for document-derived concepts.
-5. Modular monolith first; extract services only when measured needs justify it.
-6. Every release passes CI, authorization, migration, backup and quality gates.
+## Technology
 
-## Documentation
-- [Product requirements](docs/PRODUCT_REQUIREMENTS.md)
-- [Brainstorm backlog and feature priorities](docs/BRAINSTORM_BACKLOG.md)
-- [Multi-platform delivery: Android and Windows EXE](docs/MULTI_PLATFORM_DELIVERY.md)
-- [Product strategy, premium UX and template library](docs/PRODUCT_STRATEGY_AND_DESIGN_SYSTEM.md)
-- [Feature parity matrix](docs/FEATURE_PARITY.md)
-- [Architecture](docs/ARCHITECTURE.md)
-- [Engineering principles: performance, responsiveness and extensibility](docs/ENGINEERING_PRINCIPLES.md)
-- [PostgreSQL data model](docs/DATA_MODEL.md)
-- [API contract](docs/API_CONTRACT.md)
-- [Security and privacy](docs/SECURITY.md)
-- [UX and accessibility](docs/UX_ACCESSIBILITY.md)
-- [AI/document pipeline](docs/AI_PIPELINE.md)
-- [Quality gates](docs/QUALITY_GATES.md)
+- Next.js App Router, React and TypeScript
+- `@xyflow/react` for interactive graph rendering
+- Node.js 22 in CI
+- Supabase PostgreSQL planned as the canonical persistence layer; not yet connected
+- Capacitor Android and Tauri Windows packaging planned after shared API/domain contracts stabilize
+
+## Requirements
+
+- Node.js 22 (or a compatible supported Node.js LTS)
+- npm
+
+## Local development
+
+```bash
+npm install
+npm run dev
+```
+
+Open http://localhost:3000.
+
+## Quality checks
+
+```bash
+npm run lint
+npm run typecheck
+npm run build
+```
+
+## Security and data notes
+
+- Current editor draft persistence is browser-local and device-specific. It is not cloud sync or a backup.
+- Do not place Supabase service-role keys, database URLs or other privileged secrets in client code.
+- Server persistence must be added with authenticated, server-enforced workspace authorization and versioned migrations.
+- Do not treat the app as production-ready until CI, authorization, persistence/recovery, accessibility, security and backup/restore gates pass.
+
+## Product documentation
+
+- [Brainstorm backlog](docs/BRAINSTORM_BACKLOG.md)
+- [Premium UX and template system](docs/PRODUCT_STRATEGY_AND_DESIGN_SYSTEM.md)
+- [Multi-platform delivery strategy](docs/MULTI_PLATFORM_DELIVERY.md)
 - [Roadmap](docs/ROADMAP.md)
-- [Delivery plan](docs/DELIVERY_PLAN.md)
-- [Architecture decisions](docs/DECISIONS.md)
-
-## Current platform baseline
-- GitHub: source repository, pull requests, CI/CD and release gates
-- Cloudflare: DNS, TLS/edge proxy and applicable security controls
-- Supabase: managed PostgreSQL; optional Auth and Storage behind adapters
-- Next.js runs on a compatible Node.js host; do not assume Cloudflare Workers are a drop-in runtime
-
-See [platform architecture](docs/ARCHITECTURE.md) and [architecture decisions](docs/DECISIONS.md).
-
-## Proposed stack
-- Web: Next.js App Router, React, TypeScript
-- API: Next.js Route Handlers initially; Node.js workers for heavy jobs
-- Database: PostgreSQL with reviewed, versioned migrations
-- Graph renderer: SVG/Canvas adapter independent of domain logic
-- File storage: S3-compatible adapter
-- Jobs: durable queue with idempotency and bounded retries
-- Tests: unit, integration, Playwright E2E, accessibility, security and load tests
-- Deployment: container-ready with CI/CD and migration discipline
-
-## First vertical slice
-Authenticated workspace → create/open map → add/edit/move/nest topics → collapse/expand → undo/redo → autosave with explicit status → JSON import/export → automated authorization and E2E tests.
-
-## Important boundary
-Feature parity is a goal, not a claim that every current reference-product feature or paid entitlement is verified or implemented. Verify official product documentation and plan availability before finalizing parity.
+- [Architecture](docs/ARCHITECTURE.md)
