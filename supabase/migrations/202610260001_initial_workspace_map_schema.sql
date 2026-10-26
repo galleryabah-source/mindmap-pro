@@ -70,12 +70,62 @@ create table if not exists public.topics (
 create index if not exists topics_map_parent_order_idx
   on public.topics (map_id, parent_id, sort_key, id);
 
+-- Serialize parent changes per map and reject cycles in the canonical parent_id tree.
+create or replace function public.prevent_topic_parent_cycle()
+returns trigger
+language plpgsql
+set search_path = ''
+as $
+declare
+  v_cycle_found boolean;
+begin
+  if new.parent_id is null then
+    return new;
+  end if;
+
+  -- Lock the owning map so concurrent reparent operations in one map are serialized.
+  perform 1
+  from public.maps m
+  where m.id = new.map_id
+  for update;
+
+  if not found then
+    raise exception 'Map does not exist or is not accessible' using errcode = '23503';
+  end if;
+
+  with recursive ancestors(id, parent_id) as (
+    select t.id, t.parent_id
+    from public.topics t
+    where t.id = new.parent_id
+      and t.map_id = new.map_id
+    union all
+    select parent.id, parent.parent_id
+    from public.topics parent
+    join ancestors a on parent.id = a.parent_id
+    where parent.map_id = new.map_id
+  )
+  select exists (select 1 from ancestors where id = new.id)
+  into v_cycle_found;
+
+  if v_cycle_found then
+    raise exception 'Topic parent cycle is not allowed' using errcode = '23514';
+  end if;
+
+  return new;
+end;
+$;
+
+drop trigger if exists topics_prevent_parent_cycle on public.topics;
+create trigger topics_prevent_parent_cycle
+before insert or update of parent_id, map_id on public.topics
+for each row execute function public.prevent_topic_parent_cycle();
+
 create table if not exists public.map_edges (
   id uuid primary key default gen_random_uuid(),
   map_id uuid not null references public.maps(id) on delete cascade,
   source_topic_id uuid not null,
   target_topic_id uuid not null,
-  edge_type text not null default 'hierarchy' check (edge_type in ('hierarchy', 'cross_link')),
+  edge_type text not null default 'cross_link' check (edge_type = 'cross_link'),
   label text not null default '' check (length(label) <= 500),
   style jsonb not null default '{}'::jsonb check (jsonb_typeof(style) = 'object'),
   created_by uuid not null references auth.users(id) on delete restrict,
