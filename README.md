@@ -23,6 +23,7 @@ A dependable workspace for visual thinking, hierarchical knowledge exploration, 
 - [Product requirements](docs/PRODUCT_REQUIREMENTS.md)
 - [Feature parity matrix](docs/FEATURE_PARITY.md)
 - [Architecture](docs/ARCHITECTURE.md)
+- [Engineering principles: performance, responsiveness and extensibility](docs/ENGINEERING_PRINCIPLES.md)
 - [PostgreSQL data model](docs/DATA_MODEL.md)
 - [API contract](docs/API_CONTRACT.md)
 - [Security and privacy](docs/SECURITY.md)
