@@ -1,0 +1,340 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  addEdge,
+  Background,
+  BackgroundVariant,
+  Controls,
+  MiniMap,
+  ReactFlow,
+  useEdgesState,
+  useNodesState,
+  type Connection,
+  type Edge,
+  type Node,
+  type NodeMouseHandler,
+} from "@xyflow/react";
+import {
+  AlignLeft,
+  ArrowDownToLine,
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  ChevronDown,
+  CircleHelp,
+  Command,
+  FilePlus2,
+  FolderOpen,
+  GitBranch,
+  LayoutTemplate,
+  Menu,
+  Moon,
+  MoreHorizontal,
+  Plus,
+  Search,
+  Settings2,
+  Share2,
+  Sparkles,
+  Sun,
+  Undo2,
+  Redo2,
+  X,
+} from "lucide-react";
+import { initialEdges, initialNodes } from "@/lib/demo-map";
+
+const STORAGE_KEY = "mindmap-pro:local-draft:v1";
+
+type SavedMap = { nodes: Node[]; edges: Edge[]; title: string };
+
+function isSavedMap(value: unknown): value is SavedMap {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Partial<SavedMap>;
+  if (typeof candidate.title !== "string" || !Array.isArray(candidate.nodes) || !Array.isArray(candidate.edges)) return false;
+  const nodeIds = new Set<string>();
+  for (const item of candidate.nodes) {
+    if (!item || typeof item !== "object") return false;
+    const node = item as Node;
+    if (typeof node.id !== "string" || !node.position || typeof node.position.x !== "number" || typeof node.position.y !== "number" || !node.data || typeof node.data !== "object") return false;
+    nodeIds.add(node.id);
+  }
+  for (const item of candidate.edges) {
+    if (!item || typeof item !== "object") return false;
+    const edge = item as Edge;
+    if (typeof edge.id !== "string" || typeof edge.source !== "string" || typeof edge.target !== "string") return false;
+    if (!nodeIds.has(edge.source) || !nodeIds.has(edge.target)) return false;
+  }
+  return true;
+}
+
+export default function HomePage() {
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+  const [title, setTitle] = useState("Ruang ide saya");
+  const [selectedId, setSelectedId] = useState<string | null>("root");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [saveState, setSaveState] = useState<"loading" | "saved">("loading");
+  const [dark, setDark] = useState(false);
+  const [outlineOpen, setOutlineOpen] = useState(true);
+  const [inspectorOpen, setInspectorOpen] = useState(true);
+  const [mobilePanel, setMobilePanel] = useState<"none" | "outline" | "inspector">("none");
+  const [history, setHistory] = useState<SavedMap[]>([]);
+  const [future, setFuture] = useState<SavedMap[]>([]);
+  const [ready, setReady] = useState(false);
+  const [notice, setNotice] = useState("");
+  const importInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const handle = window.setTimeout(() => {
+      try {
+        const raw = window.localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed: unknown = JSON.parse(raw);
+          if (isSavedMap(parsed)) {
+            setNodes(parsed.nodes);
+            setEdges(parsed.edges);
+            setTitle(parsed.title);
+          }
+        }
+      } catch {
+        // A malformed local draft must not prevent the editor from opening.
+      } finally {
+        setReady(true);
+      }
+    }, 0);
+    return () => window.clearTimeout(handle);
+  }, [setEdges, setNodes]);
+
+  useEffect(() => {
+    if (!ready) return;
+    const handle = window.setTimeout(() => {
+      try {
+        const payload: SavedMap = { nodes, edges, title };
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+        setSaveState("saved");
+      } catch {
+        setSaveState("loading");
+      }
+    }, 350);
+    return () => window.clearTimeout(handle);
+  }, [nodes, edges, title, ready]);
+
+  const selectedNode = useMemo(
+    () => nodes.find((node) => node.id === selectedId) ?? null,
+    [nodes, selectedId],
+  );
+
+  const selectedLabel = selectedNode ? String(selectedNode.data.label ?? "Topik baru") : "";
+
+  const snapshot = useCallback((): SavedMap => ({ nodes, edges, title }), [nodes, edges, title]);
+
+  const remember = useCallback(() => {
+    setHistory((current) => [...current.slice(-29), snapshot()]);
+    setFuture([]);
+  }, [snapshot]);
+
+  const onConnect = useCallback((connection: Connection) => {
+    remember();
+    setEdges((current) => addEdge({ ...connection, type: "smoothstep", style: { stroke: "#9294bd", strokeWidth: 2 } }, current));
+  }, [remember, setEdges]);
+
+  const onNodeClick: NodeMouseHandler = useCallback((_event, node) => {
+    setSelectedId(node.id);
+    setMobilePanel("inspector");
+  }, []);
+
+  const addTopic = useCallback((asChild: boolean) => {
+    const parent = nodes.find((node) => node.id === selectedId) ?? nodes[0];
+    if (!parent) return;
+    remember();
+    const id = `topic-${Date.now()}`;
+    const newNode: Node = {
+      id,
+      position: { x: parent.position.x + (asChild ? 250 : 80), y: parent.position.y + (asChild ? 105 : 190) },
+      data: { label: "Topik baru" },
+      style: { background: dark ? "#24263a" : "#fff", color: dark ? "#f5f6ff" : "#24253b", border: "1px solid #cfd2ec", borderRadius: 14, padding: "13px 18px", fontWeight: 600, minWidth: 130, boxShadow: "0 8px 22px rgba(27,31,59,.07)" },
+    };
+    setNodes((current) => [...current, newNode]);
+    if (asChild) {
+      setEdges((current) => [...current, { id: `edge-${parent.id}-${id}`, source: parent.id, target: id, type: "smoothstep", style: { stroke: "#9294bd", strokeWidth: 2 } }]);
+    }
+    setSelectedId(id);
+    setInspectorOpen(true);
+    setMobilePanel("inspector");
+  }, [nodes, selectedId, remember, setNodes, setEdges, dark]);
+
+  const renameSelected = useCallback((value: string) => {
+    if (!selectedId) return;
+    setNodes((current) => current.map((node) => node.id === selectedId ? { ...node, data: { ...node.data, label: value } } : node));
+  }, [selectedId, setNodes]);
+
+  const deleteSelected = useCallback(() => {
+    if (!selectedId || selectedId === "root") return;
+    remember();
+    const removedIds = new Set<string>([selectedId]);
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (const edge of edges) {
+        if (removedIds.has(edge.source) && !removedIds.has(edge.target)) {
+          removedIds.add(edge.target);
+          changed = true;
+        }
+      }
+    }
+    setNodes((current) => current.filter((node) => !removedIds.has(node.id)));
+    setEdges((current) => current.filter((edge) => !removedIds.has(edge.source) && !removedIds.has(edge.target)));
+    setSelectedId("root");
+    setNotice("Topik dan subcabangnya dihapus. Gunakan Undo untuk memulihkan.");
+  }, [selectedId, edges, remember, setNodes, setEdges]);
+
+  const undo = useCallback(() => {
+    if (!history.length) return;
+    const previous = history[history.length - 1];
+    setFuture((current) => [...current, snapshot()]);
+    setNodes(previous.nodes);
+    setEdges(previous.edges);
+    setTitle(previous.title);
+    setHistory((current) => current.slice(0, -1));
+  }, [history, snapshot, setNodes, setEdges]);
+
+  const redo = useCallback(() => {
+    if (!future.length) return;
+    const next = future[future.length - 1];
+    setHistory((current) => [...current, snapshot()]);
+    setNodes(next.nodes);
+    setEdges(next.edges);
+    setTitle(next.title);
+    setFuture((current) => current.slice(0, -1));
+  }, [future, snapshot, setNodes, setEdges]);
+
+  const importJson = useCallback(async (file?: File) => {
+    if (!file) return;
+    try {
+      const parsed: unknown = JSON.parse(await file.text());
+      if (!isSavedMap(parsed)) throw new Error("Struktur file tidak valid atau koneksi merujuk ke topik yang tidak ada.");
+      remember();
+      setNodes(parsed.nodes);
+      setEdges(parsed.edges);
+      setTitle(parsed.title);
+      setSelectedId(parsed.nodes.some((node) => node.id === "root") ? "root" : parsed.nodes[0]?.id ?? null);
+      setNotice("Impor JSON berhasil divalidasi dan dimuat.");
+    } catch (error) {
+      setNotice(error instanceof Error ? "Impor gagal: " + error.message : "Impor gagal karena file tidak valid.");
+    } finally {
+      if (importInputRef.current) importInputRef.current.value = "";
+    }
+  }, [remember, setNodes, setEdges]);
+
+  const exportJson = useCallback(() => {
+    const blob = new Blob([JSON.stringify({ version: 1, title, nodes, edges }, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `${title.trim().replace(/[^a-z0-9-_]+/gi, "-").toLowerCase() || "mindmap"}.json`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }, [title, nodes, edges]);
+
+  const visibleNodes = useMemo(() => nodes.filter((node) => String(node.data.label ?? "").toLowerCase().includes(searchTerm.toLowerCase())), [nodes, searchTerm]);
+
+  return (
+    <main className={dark ? "app-shell dark-mode" : "app-shell"}>
+      <aside className={outlineOpen ? "left-rail" : "left-rail rail-collapsed"}>
+        <div className="brand-lockup">
+          <div className="brand-mark"><GitBranch size={21} strokeWidth={2.4} /></div>
+          {outlineOpen && <div><div className="brand-name">mindmap<span>pro</span></div><div className="brand-caption">VISUAL KNOWLEDGE STUDIO</div></div>}
+        </div>
+        <button className="workspace-switch" onClick={() => setTitle("Ruang ide saya")} title="Pilih workspace">
+          <div className="workspace-avatar">M</div>
+          {outlineOpen && <><div className="workspace-copy"><strong>Workspace pribadi</strong><span>Free workspace</span></div><ChevronDown size={15} /></>}
+        </button>
+        <div className="rail-section-label">{outlineOpen ? "WORKSPACE" : "WS"}</div>
+        <nav className="rail-nav">
+          <button className="rail-link active"><FolderOpen size={17} /><span>Semua mind map</span><span className="nav-count">4</span></button>
+          <button className="rail-link"><LayoutTemplate size={17} /><span>Template</span></button>
+          <button className="rail-link"><Sparkles size={17} /><span>AI Knowledge Studio</span><span className="new-pill">NEW</span></button>
+        </nav>
+        <div className="rail-section-label rail-section-spaced">{outlineOpen ? "TERAKHIR DIBUKA" : "RECENT"}</div>
+        <button className="recent-map selected"><span className="recent-dot purple" /><span>Ruang ide saya</span><MoreHorizontal size={15} /></button>
+        <button className="recent-map"><span className="recent-dot blue" /><span>Rencana belajar</span></button>
+        <button className="recent-map"><span className="recent-dot orange" /><span>Strategi produk</span></button>
+        <div className="rail-spacer" />
+        <div className="rail-bottom">
+          <button className="rail-link"><CircleHelp size={17} /><span>Bantuan & panduan</span></button>
+          <button className="rail-link"><Settings2 size={17} /><span>Pengaturan</span></button>
+          <div className="profile-card"><div className="profile-avatar">U</div><div className="profile-copy"><strong>Pengguna</strong><span>Workspace owner</span></div><MoreHorizontal size={16} /></div>
+        </div>
+      </aside>
+
+      <section className="main-column">
+        <header className="topbar">
+          <div className="breadcrumb"><span>Workspace</span><ArrowRight size={13} /><strong>{title}</strong><button className="icon-button tiny"><ChevronDown size={14} /></button></div>
+          <div className="topbar-actions">
+            <div className={saveState === "saved" ? "save-indicator is-saved" : "save-indicator"}><span className="save-dot" />{saveState === "saved" ? "Tersimpan lokal" : "Menyimpan…"}</div>
+            <button className="icon-button" aria-label="Undo" onClick={undo} disabled={!history.length}><Undo2 size={17} /></button>
+            <button className="icon-button" aria-label="Redo" onClick={redo} disabled={!future.length}><Redo2 size={17} /></button>
+            <div className="topbar-divider" />
+            <button className="secondary-button hide-small" onClick={() => importInputRef.current?.click()}><FolderOpen size={15} /> Impor</button>
+            <button className="secondary-button hide-small" onClick={exportJson}><ArrowDownToLine size={16} /> Ekspor</button>
+            <input ref={importInputRef} type="file" accept="application/json,.json" hidden onChange={(event) => void importJson(event.currentTarget.files?.[0])} />
+            <button className="primary-button" onClick={() => { navigator.clipboard?.writeText(window.location.href).catch(() => undefined); }}><Share2 size={15} /> Bagikan</button>
+          </div>
+        </header>
+
+        <div className="map-toolbar">
+          <div className="map-title-group"><input className="map-title-input" value={title} onFocus={remember} onChange={(event) => setTitle(event.target.value)} aria-label="Nama mind map" /><div className="map-meta"><span className="privacy-dot" /> Pribadi <span className="meta-separator">·</span> Diperbarui otomatis</div></div>
+          <div className="map-tools">
+            <button className="tool-button" onClick={() => addTopic(false)}><Plus size={16} /><span>Topik</span></button>
+            <button className="tool-button" onClick={() => addTopic(true)}><GitBranch size={16} /><span>Cabang</span></button>
+            <button className="tool-button" onClick={() => setMobilePanel("outline")}><AlignLeft size={16} /><span>Outline</span></button>
+            <button className="icon-button theme-toggle" aria-label="Toggle theme" onClick={() => setDark((value) => !value)}>{dark ? <Sun size={17} /> : <Moon size={17} />}</button>
+            <button className="icon-button panel-toggle" aria-label="Toggle inspector" onClick={() => setInspectorOpen((value) => !value)}><Menu size={17} /></button>
+          </div>
+        </div>
+
+        <div className="editor-layout">
+          {outlineOpen && <section className="outline-panel">
+            <div className="panel-heading"><div><span className="panel-eyebrow">NAVIGASI</span><h2>Outline</h2></div><button className="icon-button tiny" aria-label="Sembunyikan outline" onClick={() => setOutlineOpen(false)}><ArrowLeft size={15} /></button></div>
+            <label className="search-box"><Search size={15} /><input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Cari topik…" /><kbd>⌘ K</kbd></label>
+            <div className="outline-tree">
+              {visibleNodes.map((node) => <button key={node.id} className={node.id === selectedId ? "outline-item selected" : "outline-item"} onClick={() => { setSelectedId(node.id); setMobilePanel("inspector"); }}><span className={node.id === "root" ? "tree-icon root-icon" : "tree-icon"}>{node.id === "root" ? <GitBranch size={13} /> : <span />}</span><span>{String(node.data.label ?? "Topik")}</span></button>)}
+              <button className="outline-add" onClick={() => addTopic(true)}><Plus size={14} /> Tambah topik</button>
+            </div>
+            <div className="outline-footer"><span>{nodes.length} topik</span><span>{edges.length} koneksi</span></div>
+          </section>}
+
+          <section className="canvas-area" aria-label="Kanvas mind map">
+            <div className="canvas-top-label"><span className="canvas-live-dot" /> CANVAS <span>/</span> {nodes.length} NODES</div>
+            {!outlineOpen && <button className="floating-open-outline" onClick={() => setOutlineOpen(true)}><AlignLeft size={15} /> Outline</button>}
+            <ReactFlow nodes={nodes} edges={edges} onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} onConnect={onConnect} onNodeClick={onNodeClick} fitView fitViewOptions={{ padding: 0.22 }} minZoom={0.15} maxZoom={2} deleteKeyCode={["Backspace", "Delete"]} proOptions={{ hideAttribution: true }}>
+              <Background variant={BackgroundVariant.Dots} gap={22} size={1} color={dark ? "#34364c" : "#dfe2f0"} />
+              <Controls position="bottom-left" />
+              <MiniMap position="bottom-right" pannable zoomable nodeColor={(node) => node.id === "root" ? "#6968ee" : "#d9dcf6"} maskColor={dark ? "rgba(10,11,22,.65)" : "rgba(246,247,252,.65)"} />
+            </ReactFlow>
+            <div className="canvas-hint"><Command size={13} /> Pilih topik untuk mengedit <span>·</span> Seret untuk menyusun</div>
+          </section>
+
+          {inspectorOpen && <aside className="inspector-panel">
+            <div className="panel-heading"><div><span className="panel-eyebrow">PROPERTI</span><h2>Topik</h2></div><button className="icon-button tiny" aria-label="Tutup properti" onClick={() => setInspectorOpen(false)}><X size={15} /></button></div>
+            {selectedNode ? <div className="inspector-content">
+              <div className="topic-preview"><div className="topic-preview-icon"><GitBranch size={18} /></div><div><strong>{selectedId === "root" ? "Topik utama" : "Topik cabang"}</strong><span>ID: {(selectedId ?? "unknown").slice(0, 15)}</span></div></div>
+              <label className="field-label">Nama topik</label><textarea className="topic-name-field" rows={3} value={selectedLabel} onFocus={remember} onChange={(event) => renameSelected(event.target.value)} />
+              <div className="field-label field-label-row">Informasi <span className="optional-label">OPSIONAL</span></div><textarea className="notes-field" rows={4} placeholder="Tambahkan catatan, definisi, atau konteks…" />
+              <div className="inspector-divider" />
+              <div className="field-label">Aksi cepat</div>
+              <button className="action-row" onClick={() => addTopic(true)}><div className="action-icon lavender"><GitBranch size={15} /></div><span><strong>Tambah cabang</strong><small>Buat subtopik dari pilihan</small></span><Plus size={15} /></button>
+              <button className="action-row" onClick={() => addTopic(false)}><div className="action-icon mint"><FilePlus2 size={15} /></div><span><strong>Tambah topik bebas</strong><small>Tambahkan ide ke kanvas</small></span><Plus size={15} /></button>
+              {selectedId !== "root" && <button className="delete-topic" onClick={deleteSelected}><X size={14} /> Hapus topik terpilih</button>}
+              <div className="ai-card"><div className="ai-card-top"><div className="ai-sparkle"><Sparkles size={16} /></div><span>AI KNOWLEDGE STUDIO</span><span className="soon-pill">SEGERA</span></div><strong>Kembangkan pemikiranmu</strong><p>Ubah satu ide menjadi cabang terstruktur, ringkasan, atau pertanyaan belajar.</p><button disabled className="ai-cta">Asisten AI <ArrowRight size={14} /></button></div>
+            </div> : <div className="inspector-empty">Pilih topik pada kanvas untuk melihat propertinya.</div>}
+          </aside>}
+        </div>
+
+        <footer className="statusbar"><div><span className="status-check"><Check size={11} /></span> {notice || "Draft lokal"} <span className="status-divider">/</span> {nodes.length} topik</div><div className="status-right"><span>100%</span><span className="status-divider">·</span><span>Autosave perangkat</span><button onClick={exportJson}><ArrowDownToLine size={13} /> JSON</button></div></footer>
+      </section>
+
+      {mobilePanel !== "none" && <div className="mobile-sheet-backdrop" onClick={() => setMobilePanel("none")}><section className="mobile-sheet" onClick={(event) => event.stopPropagation()}><div className="sheet-handle" /><div className="sheet-header"><strong>{mobilePanel === "outline" ? "Outline" : "Properti topik"}</strong><button className="icon-button" onClick={() => setMobilePanel("none")}><X size={17} /></button></div>{mobilePanel === "outline" ? <div className="sheet-list">{nodes.map((node) => <button key={node.id} onClick={() => { setSelectedId(node.id); setMobilePanel("inspector"); }}><GitBranch size={15} />{String(node.data.label ?? "Topik")}<ArrowRight size={14} /></button>)}</div> : <div className="sheet-editor"><label className="field-label">Nama topik</label><textarea rows={2} value={selectedLabel} onFocus={remember} onChange={(event) => renameSelected(event.target.value)} /><button className="primary-button" onClick={() => addTopic(true)}><Plus size={15} /> Tambah cabang</button></div>}</section></div>}
+    </main>
+  );
+}
