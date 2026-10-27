@@ -26,6 +26,16 @@ describe("parseMapDocument", () => {
     expect(() => parseMapDocument(input)).toThrow(/duplikat/);
   });
 
+  it("rejects identifiers containing control characters", () => {
+    const input = validDocument();
+    input.nodes[1].id = "child\u0000shadow";
+    expect(() => parseMapDocument(input)).toThrow(/ID topik/);
+
+    const edgeInput = validDocument();
+    edgeInput.edges[0].source = "root\n";
+    expect(() => parseMapDocument(edgeInput)).toThrow(/Identitas koneksi/);
+  });
+
   it("rejects edges that reference missing nodes", () => {
     const input = validDocument();
     input.edges[0].target = "missing";
@@ -58,5 +68,15 @@ describe("parseMapDocument", () => {
     const input = validDocument();
     input.nodes[1].data.label = "x".repeat(2001);
     expect(() => parseMapDocument(input)).toThrow(/Nama topik/);
+  });
+
+  it("rejects empty or excessively long edge types", () => {
+    const emptyType = validDocument();
+    emptyType.edges[0].type = "";
+    expect(() => parseMapDocument(emptyType)).toThrow(/Jenis koneksi/);
+
+    const longType = validDocument();
+    longType.edges[0].type = "x".repeat(129);
+    expect(() => parseMapDocument(longType)).toThrow(/Jenis koneksi/);
   });
 });
