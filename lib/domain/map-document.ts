@@ -42,6 +42,11 @@ function isBoundedString(value: unknown, max: number, allowEmpty = true): value 
   return typeof value === "string" && value.length <= max && (allowEmpty || value.trim().length > 0);
 }
 
+function isSafeIdentifier(value: unknown): value is string {
+  return isBoundedString(value, MAP_LIMITS.idLength, false)
+    && !/[\u0000-\u001F\u007F]/.test(value);
+}
+
 function isSafeJsonValue(value: unknown, depth = 0): boolean {
   if (depth > 12) return false;
   if (value === null || typeof value === "string" || typeof value === "boolean") return true;
@@ -66,7 +71,7 @@ export function parseMapDocument(input: unknown): MapDocument {
   const ids = new Set<string>();
   const nodes: MapNodeDocument[] = input.nodes.map((candidate, index) => {
     if (!isRecord(candidate)) throw new Error(`Topik ke-${index + 1} tidak valid.`);
-    if (!isBoundedString(candidate.id, MAP_LIMITS.idLength, false)) throw new Error(`ID topik ke-${index + 1} tidak valid.`);
+    if (!isSafeIdentifier(candidate.id)) throw new Error(`ID topik ke-${index + 1} tidak valid.`);
     if (ids.has(candidate.id)) throw new Error(`ID topik duplikat: ${candidate.id}.`);
     ids.add(candidate.id);
 
@@ -95,16 +100,18 @@ export function parseMapDocument(input: unknown): MapDocument {
   const pairs = new Set<string>();
   const edges: MapEdgeDocument[] = input.edges.map((candidate, index) => {
     if (!isRecord(candidate)) throw new Error(`Koneksi ke-${index + 1} tidak valid.`);
-    if (!isBoundedString(candidate.id, MAP_LIMITS.idLength, false)
-      || !isBoundedString(candidate.source, MAP_LIMITS.idLength, false)
-      || !isBoundedString(candidate.target, MAP_LIMITS.idLength, false)) {
+    if (!isSafeIdentifier(candidate.id)
+      || !isSafeIdentifier(candidate.source)
+      || !isSafeIdentifier(candidate.target)) {
       throw new Error(`Identitas koneksi ke-${index + 1} tidak valid.`);
     }
     if (edgeIds.has(candidate.id)) throw new Error(`ID koneksi duplikat: ${candidate.id}.`);
     edgeIds.add(candidate.id);
     if (candidate.source === candidate.target) throw new Error("Koneksi ke dirinya sendiri tidak diizinkan.");
     if (!ids.has(candidate.source) || !ids.has(candidate.target)) throw new Error("Koneksi merujuk ke topik yang tidak tersedia.");
-    const pair = `${candidate.source}\u0000${candidate.target}\u0000${String(candidate.type ?? "default")}`;
+    const edgeType = candidate.type ?? "default";
+    if (!isBoundedString(edgeType, 128, false)) throw new Error("Jenis koneksi tidak valid.");
+    const pair = JSON.stringify([candidate.source, candidate.target, edgeType]);
     if (pairs.has(pair)) throw new Error("Koneksi duplikat ditemukan.");
     pairs.add(pair);
     if (candidate.label !== undefined && !isBoundedString(candidate.label, 500)) throw new Error("Label koneksi terlalu panjang.");
