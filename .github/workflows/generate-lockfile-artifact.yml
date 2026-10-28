@@ -1,6 +1,7 @@
 name: Generate dependency lockfile artifact
 
 on:
+  workflow_dispatch:
   push:
     branches: ["security/vitest-patched-release"]
 
