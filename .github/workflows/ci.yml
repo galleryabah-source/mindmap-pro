@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main, "feat/**", "fix/**", "security/**"]
+    branches: [main, "feat/**", "fix/**", "hardening/**", "ci/**", "security/**"]
   pull_request:
-    branches: [main]
+    branches: [main, "feat/**"]
 
 permissions:
   contents: read
@@ -14,8 +14,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  web:
-    name: Web lint, types and production build
+  dependency-audit:
+    name: Dependency security audit
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -29,6 +29,20 @@ jobs:
         run: npm install
       - name: Dependency security audit
         run: npm audit --audit-level=high
+
+  web:
+    name: Web lint, types, tests and production build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install
       - name: Lint
         run: npm run lint
       - name: Typecheck
