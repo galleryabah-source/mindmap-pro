@@ -1,4 +1,4 @@
-name: Generate dependency lockfile artifact
+name: Generate dependency lockfile
 
 on:
   workflow_dispatch:
@@ -6,16 +6,24 @@ on:
     branches: ["security/vitest-patched-release"]
 
 permissions:
-  contents: read
+  contents: write
+
+concurrency:
+  group: generate-lockfile-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   generate-lockfile:
-    name: Resolve and package npm lockfile
+    name: Resolve, validate, and commit npm lockfile
+    if: github.repository == 'galleryabah-source/mindmap-pro' && github.ref == 'refs/heads/security/vitest-patched-release'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - name: Checkout
+      - name: Checkout target branch
         uses: actions/checkout@v4
+        with:
+          ref: security/vitest-patched-release
+          persist-credentials: true
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -28,10 +36,14 @@ jobs:
         run: npm install --package-lock-only --ignore-scripts
       - name: Validate lockfile with clean install
         run: npm ci --ignore-scripts
-      - name: Upload package-lock.json
-        uses: actions/upload-artifact@v4
-        with:
-          name: mindmap-pro-package-lock
-          path: package-lock.json
-          if-no-files-found: error
-          retention-days: 7
+      - name: Commit lockfile if changed
+        run: |
+          if git diff --quiet -- package-lock.json; then
+            echo "package-lock.json is already up to date."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- package-lock.json
+          git commit -m "build: add validated npm lockfile"
+          git push origin HEAD:security/vitest-patched-release
