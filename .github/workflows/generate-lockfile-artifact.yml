@@ -1,4 +1,5 @@
 name: Generate dependency lockfile
+run-name: Generate and validate npm lockfile
 
 on:
   workflow_dispatch:
