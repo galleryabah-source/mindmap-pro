@@ -39,8 +39,8 @@ jobs:
         run: npm ci --ignore-scripts
       - name: Commit lockfile if changed
         run: |
-          if git diff --quiet -- package-lock.json; then
-            echo "package-lock.json is already up to date."
+          if git ls-files --error-unmatch package-lock.json >/dev/null 2>&1 && git diff --quiet -- package-lock.json; then
+            echo "Tracked package-lock.json is already up to date."
             exit 0
           fi
           git config user.name "github-actions[bot]"
