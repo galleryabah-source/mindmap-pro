@@ -291,3 +291,20 @@ export function updateTopicContent(
       : node),
   });
 }
+
+/** Removes selected cross-links without allowing hierarchy edges to be detached. */
+export function deleteCrossLinks(graph: CanonicalGraph, edgeIds: string[]): CanonicalGraph {
+  assertCanonicalGraph(graph);
+  if (!Array.isArray(edgeIds) || edgeIds.some((id) => typeof id !== "string")) {
+    throw new Error("Daftar cross-link yang akan dihapus tidak valid.");
+  }
+  const requested = new Set(edgeIds);
+  const existing = new Set(graph.edges.map((edge) => edge.id));
+  for (const id of requested) {
+    if (!existing.has(id)) throw new Error("Cross-link yang akan dihapus tidak ditemukan.");
+  }
+  return assertCanonicalGraph({
+    ...graph,
+    edges: graph.edges.filter((edge) => !requested.has(edge.id)),
+  });
+}
