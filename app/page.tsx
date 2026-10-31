@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ComponentProps } from "react";
 import {
   Background,
   BackgroundVariant,
@@ -15,7 +15,6 @@ import {
   type Node,
   type NodeChange,
   type NodeMouseHandler,
-  type NodeDragHandler,
 } from "@xyflow/react";
 import {
   AlignLeft,
@@ -51,6 +50,7 @@ import { createHistory, recordHistorySnapshot, redoHistory, syncHistoryPresent, 
 
 const STORAGE_KEY = "mindmap-pro:local-draft:v2";
 const LEGACY_STORAGE_KEY = "mindmap-pro:local-draft:v1";
+const RECOVERY_STORAGE_KEY = "mindmap-pro:local-draft:recovery";
 
 type SavedMap = { nodes: Node[]; edges: Edge[]; title: string };
 
@@ -70,6 +70,7 @@ export default function HomePage() {
   const [history, setHistory] = useState<HistoryState<SavedMap>>(() => createHistory({ nodes: initialNodes, edges: initialEdges, title: "Ruang ide saya" }));
   const [ready, setReady] = useState(false);
   const [restoreSafe, setRestoreSafe] = useState(false);
+  const [recoveryBackupSafe, setRecoveryBackupSafe] = useState(false);
   const [notice, setNotice] = useState("");
   const importInputRef = useRef<HTMLInputElement>(null);
 
@@ -93,8 +94,14 @@ export default function HomePage() {
         let recovered = false;
         if (raw) {
           try {
-            window.localStorage.setItem("mindmap-pro:local-draft:recovery", raw);
-            recovered = true;
+            const existingRecovery = window.localStorage.getItem(RECOVERY_STORAGE_KEY);
+            if (existingRecovery === null) {
+              window.localStorage.setItem(RECOVERY_STORAGE_KEY, raw);
+              recovered = window.localStorage.getItem(RECOVERY_STORAGE_KEY) === raw;
+            } else {
+              recovered = existingRecovery === raw;
+            }
+            if (recovered) setRecoveryBackupSafe(true);
           } catch {
             // Preserve the original key; do not overwrite when recovery storage is unavailable.
           }
@@ -197,14 +204,16 @@ export default function HomePage() {
   }, [selectedId, title, nodes, edges, remember, setNodes, setEdges]);
 
   const handleNodesChange = useCallback((changes: NodeChange[]) => {
-    if (changes.some((change) => change.type === "remove")) remember();
-    onNodesChange(changes);
-  }, [onNodesChange, remember]);
+    // Structural deletion must pass through onBeforeDelete and canonical commands.
+    const safeChanges = changes.filter((change) => change.type !== "remove");
+    if (safeChanges.length > 0) onNodesChange(safeChanges);
+  }, [onNodesChange]);
 
   const handleEdgesChange = useCallback((changes: EdgeChange[]) => {
-    if (changes.some((change) => change.type === "remove")) remember();
-    onEdgesChange(changes);
-  }, [onEdgesChange, remember]);
+    // Hierarchy edges are derived from parentId; raw edge removal is never authoritative.
+    const safeChanges = changes.filter((change) => change.type !== "remove");
+    if (safeChanges.length > 0) onEdgesChange(safeChanges);
+  }, [onEdgesChange]);
 
   const updateSelectedNotes = useCallback((value: string) => {
     if (!selectedId) return;
@@ -247,7 +256,7 @@ export default function HomePage() {
     }
   }, [edges, nodes, title, remember, setNodes, setEdges]);
 
-  const onNodeDragStop: NodeDragHandler = useCallback((_event, node) => {
+  const onNodeDragStop: NonNullable<ComponentProps<typeof ReactFlow>["onNodeDragStop"]> = useCallback((_event, node) => {
     try {
       const graph = toCanonicalGraph(title, nodes, edges);
       const next = moveTopic(graph, node.id, node.position);
@@ -263,7 +272,7 @@ export default function HomePage() {
     setSelectedId(node.id);
     setMobilePanel("inspector");
   }, []);
-  const onBeforeDelete = useCallback(({
+  const onBeforeDelete = useCallback(async ({
     nodes: deletingNodes,
     edges: deletingEdges,
   }: { nodes: Node[]; edges: Edge[] }) => {
@@ -398,15 +407,17 @@ export default function HomePage() {
       setEdges(parsed.edges);
       setTitle(parsed.title);
       setSelectedId(parsed.nodes.some((node) => node.id === "root") ? "root" : parsed.nodes[0]?.id ?? null);
+      if (!restoreSafe && recoveryBackupSafe) setRestoreSafe(true);
       setNotice(parsed.migrated
         ? "Dokumen lama berhasil dimigrasikan dan dimuat."
-        : "Impor dokumen kanonis berhasil divalidasi dan dimuat.");
+        : "Impor dokumen kanonis berhasil divalidasi dan dimuat."
+        + (!restoreSafe && !recoveryBackupSafe ? " Autosave tetap dinonaktifkan karena backup draft lama belum terverifikasi." : ""));
     } catch (error) {
       setNotice(error instanceof Error ? "Impor gagal: " + error.message : "Impor gagal karena file tidak valid.");
     } finally {
       if (importInputRef.current) importInputRef.current.value = "";
     }
-  }, [remember, setNodes, setEdges]);
+  }, [remember, setNodes, setEdges, restoreSafe, recoveryBackupSafe]);
 
   const exportJson = useCallback(() => {
     try {
