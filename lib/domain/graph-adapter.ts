@@ -72,7 +72,7 @@ export function fromCanonicalGraph(graph: CanonicalGraph): {
   const hierarchyEdges: Edge[] = valid.nodes
     .filter((node) => node.parentId !== null)
     .map((node) => ({
-      id: `hierarchy:${node.parentId}:${node.id}`,
+      id: `hierarchy:${encodeURIComponent(node.parentId as string)}:${encodeURIComponent(node.id)}`,
       source: node.parentId as string,
       target: node.id,
       type: "smoothstep",
