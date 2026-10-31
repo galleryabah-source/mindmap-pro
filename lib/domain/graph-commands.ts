@@ -175,3 +175,26 @@ export function addCrossLink(
   const edge: CanonicalCrossLink = { ...input, type: "cross_link" };
   return assertCanonicalGraph({ ...graph, edges: [...graph.edges, edge] });
 }
+
+/**
+ * Resolves a visual subtree using hierarchy edges only.
+ * Cross-links are references and are deliberately excluded from cascading operations.
+ */
+export function collectHierarchicalSubtreeIds(
+  edges: Array<{ source: string; target: string; data?: { relation?: string } }>,
+  topicId: string,
+): Set<string> {
+  const hierarchyEdges = edges.filter((edge) => edge.data?.relation !== "cross_link");
+  const removed = new Set<string>([topicId]);
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const edge of hierarchyEdges) {
+      if (removed.has(edge.source) && !removed.has(edge.target)) {
+        removed.add(edge.target);
+        changed = true;
+      }
+    }
+  }
+  return removed;
+}
