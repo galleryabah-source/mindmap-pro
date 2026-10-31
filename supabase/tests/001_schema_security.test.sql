@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(22);
+select plan(26);
 
 select has_table('public', 'workspaces', 'workspaces table exists');
 select has_table('public', 'workspace_members', 'workspace_members table exists');
@@ -10,6 +10,11 @@ select has_table('public', 'topics', 'topics table exists');
 select has_table('public', 'map_edges', 'map_edges table exists');
 select has_table('public', 'map_revisions', 'map_revisions table exists');
 select has_table('public', 'audit_events', 'audit_events table exists');
+
+select col_type('public', 'topics', 'id', 'text', 'topic IDs preserve canonical string identifiers');
+select col_type('public', 'map_edges', 'id', 'text', 'cross-link IDs preserve canonical string identifiers');
+select has_index('public', 'topics', 'topics_one_root_per_map_idx', 'each map is limited to one root topic');
+select has_index('public', 'map_edges', 'map_edges_unique_undirected_idx', 'reversed duplicate cross-links are rejected');
 
 select ok((select relrowsecurity from pg_class where oid = 'public.workspaces'::regclass), 'RLS enabled on workspaces');
 select ok((select relrowsecurity from pg_class where oid = 'public.workspace_members'::regclass), 'RLS enabled on workspace_members');
