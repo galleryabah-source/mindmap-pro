@@ -5,6 +5,7 @@ import {
   addCrossLink,
   assertCanonicalGraph,
   deleteTopicSubtree,
+  moveTopic,
   reparentTopic,
   type CanonicalGraph,
 } from "../lib/domain/graph-commands";
@@ -111,6 +112,19 @@ describe("canonical graph commands", () => {
     const invalid = graph();
     invalid.edges[0].style = { custom: () => "unsafe" };
     expect(() => assertCanonicalGraph(invalid)).toThrow(/Cross-link/);
+  });
+
+  it("moves a topic without changing its parent or cross-links", () => {
+    const next = moveTopic(graph(), "b", { x: 120, y: 240 });
+    expect(next.nodes.find((node) => node.id === "b")).toMatchObject({
+      parentId: "a",
+      position: { x: 120, y: 240 },
+    });
+    expect(next.edges).toEqual(graph().edges);
+  });
+
+  it("rejects invalid topic movement coordinates", () => {
+    expect(() => moveTopic(graph(), "b", { x: Number.NaN, y: 0 })).toThrow(/Posisi/);
   });
 
   it("rejects root deletion", () => {
