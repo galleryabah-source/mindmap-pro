@@ -50,12 +50,13 @@ export function recordHistorySnapshot<T>(
   state: HistoryState<T>,
   snapshot: T,
   limit = DEFAULT_HISTORY_LIMIT,
+  equals: (left: T, right: T) => boolean = Object.is,
 ): HistoryState<T> {
   if (!Number.isInteger(limit) || limit < 1) {
     throw new Error("Batas riwayat harus berupa bilangan bulat positif.");
   }
   const last = state.past[state.past.length - 1];
-  if (Object.is(last, snapshot)) return state;
+  if (last !== undefined && equals(last, snapshot)) return state;
   return {
     ...state,
     past: [...state.past, snapshot].slice(-limit),
