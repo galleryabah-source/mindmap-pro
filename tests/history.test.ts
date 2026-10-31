@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   commitHistory,
   createHistory,
+  recordHistorySnapshot,
+  syncHistoryPresent,
   redoHistory,
   undoHistory,
 } from "../lib/domain/history";
@@ -36,6 +38,33 @@ describe("transactional history", () => {
     const state = createHistory("unchanged");
     expect(undoHistory(state)).toBe(state);
     expect(redoHistory(state)).toBe(state);
+  });
+
+
+  it("records one pre-mutation snapshot and deduplicates repeated callbacks", () => {
+    const initial = { value: "A" };
+    const same = { value: "A" };
+    const equals = (left: { value: string }, right: { value: string }) => left.value === right.value;
+    const first = recordHistorySnapshot(createHistory(initial), initial, 30, equals);
+    const duplicate = recordHistorySnapshot(first, same, 30, equals);
+    expect(first.past).toEqual([initial]);
+    expect(duplicate).toBe(first);
+  });
+
+  it("synchronizes the present snapshot without creating an undo step", () => {
+    const initial = createHistory("A");
+    const synced = syncHistoryPresent(initial, "B");
+    expect(synced).toEqual({ past: [], present: "B", future: [] });
+  });
+
+  it("undoes and redoes snapshots recorded before editor mutations", () => {
+    const initial = createHistory("A");
+    const beforeChange = recordHistorySnapshot(initial, "A");
+    const afterChange = syncHistoryPresent(beforeChange, "B");
+    const undone = undoHistory(afterChange);
+    const redone = redoHistory(undone);
+    expect(undone.present).toBe("A");
+    expect(redone.present).toBe("B");
   });
 
   it("rejects an invalid history limit", () => {
