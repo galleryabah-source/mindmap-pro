@@ -89,7 +89,8 @@ export function assertCanonicalGraph(graph: CanonicalGraph): CanonicalGraph {
       && (typeof node.data.notes !== "string" || node.data.notes.length > MAP_LIMITS.notesLength)) {
       throw new Error(`Catatan topik ${node.id} tidak valid.`);
     }
-    if (!isSafeJsonValue(node.data)
+    if (!isSafeJsonValue(node)
+      || !isSafeJsonValue(node.data)
       || (node.style !== undefined && (!isRecord(node.style) || !isSafeJsonValue(node.style)))) {
       throw new Error(`Metadata topik ${node.id} terlalu kompleks atau tidak aman.`);
     }
@@ -134,7 +135,8 @@ export function assertCanonicalGraph(graph: CanonicalGraph): CanonicalGraph {
     if (edge.label !== undefined && (typeof edge.label !== "string" || edge.label.length > 500)) {
       throw new Error("Label cross-link tidak valid.");
     }
-    if ((edge.style !== undefined && (!isRecord(edge.style) || !isSafeJsonValue(edge.style)))
+    if (!isSafeJsonValue(edge)
+      || (edge.style !== undefined && (!isRecord(edge.style) || !isSafeJsonValue(edge.style)))
       || edge.source === edge.target || !byId.has(edge.source) || !byId.has(edge.target)) {
       throw new Error("Cross-link harus menghubungkan dua topik berbeda yang tersedia.");
     }
@@ -199,11 +201,20 @@ export function addCrossLink(
   input: { id: string; source: string; target: string; label?: string },
 ): CanonicalGraph {
   assertCanonicalGraph(graph);
-  if (!isRecord(input) || typeof input.id !== "string" || typeof input.source !== "string"
-    || typeof input.target !== "string") {
+  if (!isRecord(input)
+    || Object.keys(input).some((key) => !["id", "source", "target", "label"].includes(key))
+    || typeof input.id !== "string" || typeof input.source !== "string"
+    || typeof input.target !== "string"
+    || (input.label !== undefined && typeof input.label !== "string")) {
     throw new Error("Input cross-link tidak valid.");
   }
-  const edge: CanonicalCrossLink = { ...input, type: "cross_link" };
+  const edge: CanonicalCrossLink = {
+    id: input.id,
+    source: input.source,
+    target: input.target,
+    type: "cross_link",
+    ...(input.label === undefined ? {} : { label: input.label }),
+  };
   return assertCanonicalGraph({ ...graph, edges: [...graph.edges, edge] });
 }
 
