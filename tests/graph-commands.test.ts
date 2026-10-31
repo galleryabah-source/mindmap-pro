@@ -6,6 +6,7 @@ import {
   assertCanonicalGraph,
   deleteTopicSubtree,
   moveTopic,
+  updateTopicContent,
   reparentTopic,
   type CanonicalGraph,
 } from "../lib/domain/graph-commands";
@@ -140,6 +141,21 @@ describe("canonical graph commands", () => {
       label: "Topic",
       position: { x: 0, y: 0 },
     })).toThrow(/ID topik/);
+  });
+
+  it("updates topic content without changing hierarchy or links", () => {
+    const current = graph();
+    const next = updateTopicContent(current, "b", { label: "Updated", notes: "Context" });
+    expect(next.nodes.find((node) => node.id === "b")).toMatchObject({
+      parentId: "a",
+      data: { label: "Updated", notes: "Context" },
+    });
+    expect(next.edges).toEqual(current.edges);
+  });
+
+  it("rejects oversized topic content", () => {
+    expect(() => updateTopicContent(graph(), "b", { label: "x".repeat(2001) })).toThrow(/2000/);
+    expect(() => updateTopicContent(graph(), "b", { notes: "x".repeat(50001) })).toThrow(/50000/);
   });
 
   it("rejects root deletion", () => {
