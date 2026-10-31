@@ -2,7 +2,7 @@
 
 This roadmap converts the product brainstorm into a sequenced, testable delivery plan. Estimates are planning ranges, not delivery promises. Brainstorm items remain proposals until implemented and verified.
 
-See [Brainstorm Backlog](BRAINSTORM_BACKLOG.md) for the full feature inventory, UX direction, template categories, engineering guardrails and P0–P4 prioritization. See [Product Strategy and Design System](PRODUCT_STRATEGY_AND_DESIGN_SYSTEM.md) for information architecture and visual standards. See [Multi-Platform Delivery Strategy](MULTI_PLATFORM_DELIVERY.md) for Android and Windows desktop packaging, architecture and release gates.
+See [Brainstorm Backlog](BRAINSTORM_BACKLOG.md) for the full feature inventory, UX direction, template categories, engineering guardrails and P0–P4 prioritization. See [Product Strategy and Design System](PRODUCT_STRATEGY_AND_DESIGN_SYSTEM.md) for information architecture and visual standards. See [Multi-Platform Delivery Strategy](MULTI_PLATFORM_DELIVERY.md) for Android and Windows desktop packaging, architecture and release gates. See [Canonical Persistence Write Contract](CANONICAL_PERSISTENCE_WRITE_CONTRACT.md) for the required atomic graph mutation, revision, audit and idempotency boundary.
 
 ## P0 — Phase 0: Product and technical validation (1–2 weeks)
 
@@ -21,9 +21,10 @@ See [Brainstorm Backlog](BRAINSTORM_BACKLOG.md) for the full feature inventory, 
 - Add CI for lint, typecheck, unit tests, build, dependency/security checks and migration validation.
 - Add environment validation, health endpoint, structured logs and safe error handling.
 - Create versioned PostgreSQL migrations, identity/session model, workspace membership and server-enforced tenant authorization.
+- Keep browser-role access read-only until audited atomic map/graph write RPCs are implemented; follow the canonical persistence write contract.
 - Establish secrets hygiene, backup expectations and local setup instructions.
 
-**Exit gate:** deterministic setup, green CI, migration checks and tenant-isolation tests pass.
+**Exit gate:** deterministic setup, green CI, migration checks and tenant-isolation tests pass. Direct client DML is revoked; canonical write RPC contracts and security tests are approved before cloud persistence is enabled.
 
 ## P0 — Phase 2: Canonical graph and trustworthy editor (3–5 weeks)
 
@@ -135,4 +136,4 @@ Start after shared API/domain contracts stabilize; can overlap with Android pack
 
 ## Critical path
 
-Repository/CI → identity and tenant model → graph invariants → editor/persistence → history and import/export → premium UX/templates → secure document/AI pipeline → collaboration/presentation → production hardening → shared cross-platform packages/API contracts → Android alpha → Windows desktop alpha → coordinated multi-platform release.
+Repository/CI → identity and tenant model → graph invariants → fail-closed database boundary → atomic map/graph write RPCs with revision/audit/idempotency → editor cloud persistence and recovery → history and import/export → premium UX/templates → secure document/AI pipeline → collaboration/presentation → production hardening → shared cross-platform packages/API contracts → Android alpha → Windows desktop alpha → coordinated multi-platform release.
