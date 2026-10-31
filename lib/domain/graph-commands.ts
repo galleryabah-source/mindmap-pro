@@ -89,7 +89,7 @@ export function assertCanonicalGraph(graph: CanonicalGraph): CanonicalGraph {
       && (typeof node.data.notes !== "string" || node.data.notes.length > MAP_LIMITS.notesLength)) {
       throw new Error(`Catatan topik ${node.id} tidak valid.`);
     }
-    if (!isSafeJsonValue(node)
+    if (!isSafeJsonValue(Object.fromEntries(Object.entries(node).filter(([, value]) => value !== undefined)))
       || !isSafeJsonValue(node.data)
       || (node.style !== undefined && (!isRecord(node.style) || !isSafeJsonValue(node.style)))) {
       throw new Error(`Metadata topik ${node.id} terlalu kompleks atau tidak aman.`);
@@ -135,7 +135,7 @@ export function assertCanonicalGraph(graph: CanonicalGraph): CanonicalGraph {
     if (edge.label !== undefined && (typeof edge.label !== "string" || edge.label.length > 500)) {
       throw new Error("Label cross-link tidak valid.");
     }
-    if (!isSafeJsonValue(edge)
+    if (!isSafeJsonValue(Object.fromEntries(Object.entries(edge).filter(([, value]) => value !== undefined)))
       || (edge.style !== undefined && (!isRecord(edge.style) || !isSafeJsonValue(edge.style)))
       || edge.source === edge.target || !byId.has(edge.source) || !byId.has(edge.target)) {
       throw new Error("Cross-link harus menghubungkan dua topik berbeda yang tersedia.");
