@@ -76,7 +76,7 @@ export function fromCanonicalGraph(graph: CanonicalGraph): {
     ...edge,
     type: "smoothstep",
     data: { relation: "cross_link" },
-    style: { stroke: "#9294bd", strokeWidth: 2, strokeDasharray: "5 4" },
+    style: edge.style ?? { stroke: "#9294bd", strokeWidth: 2, strokeDasharray: "5 4" },
   }));
   return { nodes, edges: [...hierarchyEdges, ...crossLinkEdges], title: valid.title };
 }
