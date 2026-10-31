@@ -132,6 +132,23 @@ export default function HomePage() {
   );
 
   const selectedLabel = selectedNode ? String(selectedNode.data.label ?? "Topik baru") : "";
+  const snapshot = useCallback((): SavedMap => ({ nodes, edges, title }), [nodes, edges, title]);
+
+  const remember = useCallback(() => {
+    const currentSnapshot = snapshot();
+    setHistory((current) => {
+      const last = current[current.length - 1];
+      // React Flow may emit node-remove and edge-remove separately for one user action.
+      // Store that pre-change state only once so a single Undo restores the whole action.
+      if (last && last.nodes === currentSnapshot.nodes
+        && last.edges === currentSnapshot.edges && last.title === currentSnapshot.title) {
+        return current;
+      }
+      return [...current.slice(-29), currentSnapshot];
+    });
+    setFuture([]);
+  }, [snapshot]);
+
   const hierarchyOptions = useMemo(() => {
     if (!selectedId || selectedId === "root") return [];
     try {
@@ -176,24 +193,6 @@ export default function HomePage() {
       setNotice(error instanceof Error ? `Pemindahan parent ditolak: ${error.message}` : "Parent topik tidak valid.");
     }
   }, [selectedId, title, nodes, edges, remember, setNodes, setEdges]);
-
-
-  const snapshot = useCallback((): SavedMap => ({ nodes, edges, title }), [nodes, edges, title]);
-
-  const remember = useCallback(() => {
-    const currentSnapshot = snapshot();
-    setHistory((current) => {
-      const last = current[current.length - 1];
-      // React Flow may emit node-remove and edge-remove separately for one user action.
-      // Store that pre-change state only once so a single Undo restores the whole action.
-      if (last && last.nodes === currentSnapshot.nodes
-        && last.edges === currentSnapshot.edges && last.title === currentSnapshot.title) {
-        return current;
-      }
-      return [...current.slice(-29), currentSnapshot];
-    });
-    setFuture([]);
-  }, [snapshot]);
 
   const handleNodesChange = useCallback((changes: NodeChange[]) => {
     if (changes.some((change) => change.type === "remove")) remember();
