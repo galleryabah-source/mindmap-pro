@@ -4,6 +4,7 @@ import {
   collectHierarchicalSubtreeIds,
   addCrossLink,
   assertCanonicalGraph,
+  deleteCrossLinks,
   deleteTopicSubtree,
   moveTopic,
   updateTopicContent,
@@ -54,6 +55,18 @@ describe("canonical graph commands", () => {
   it("allows reparenting to a different valid branch", () => {
     const next = reparentTopic(graph(), "a", "c");
     expect(next.nodes.find((node) => node.id === "a")?.parentId).toBe("c");
+  });
+
+  it("deletes selected cross-links without changing hierarchy", () => {
+    const next = deleteCrossLinks(graph(), ["x1"]);
+    expect(next.edges).toHaveLength(0);
+    expect(next.nodes.map((node) => [node.id, node.parentId])).toEqual(
+      graph().nodes.map((node) => [node.id, node.parentId]),
+    );
+  });
+
+  it("rejects deletion of an unknown cross-link", () => {
+    expect(() => deleteCrossLinks(graph(), ["missing"])).toThrow(/tidak ditemukan/);
   });
 
   it("rejects duplicate undirected cross-links", () => {
