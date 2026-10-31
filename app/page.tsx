@@ -47,6 +47,7 @@ import { initialEdges, initialNodes } from "@/lib/demo-map";
 import { parseStoredMapDocument, serializeMapDocument } from "@/lib/domain/document-lifecycle";
 import { addChildTopic, addCrossLink, deleteTopicSubtree, moveTopic, reparentTopic } from "@/lib/domain/graph-commands";
 import { fromCanonicalGraph, toCanonicalGraph } from "@/lib/domain/graph-adapter";
+import { createHistory, recordHistorySnapshot, redoHistory, syncHistoryPresent, undoHistory, type HistoryState } from "@/lib/domain/history";
 
 const STORAGE_KEY = "mindmap-pro:local-draft:v2";
 const LEGACY_STORAGE_KEY = "mindmap-pro:local-draft:v1";
@@ -66,8 +67,7 @@ export default function HomePage() {
   const [outlineOpen, setOutlineOpen] = useState(true);
   const [inspectorOpen, setInspectorOpen] = useState(true);
   const [mobilePanel, setMobilePanel] = useState<"none" | "outline" | "inspector">("none");
-  const [history, setHistory] = useState<SavedMap[]>([]);
-  const [future, setFuture] = useState<SavedMap[]>([]);
+  const [history, setHistory] = useState<HistoryState<SavedMap>>(() => createHistory({ nodes: initialNodes, edges: initialEdges, title: "Ruang ide saya" }));
   const [ready, setReady] = useState(false);
   const [restoreSafe, setRestoreSafe] = useState(false);
   const [notice, setNotice] = useState("");
@@ -134,19 +134,21 @@ export default function HomePage() {
   const selectedLabel = selectedNode ? String(selectedNode.data.label ?? "Topik baru") : "";
   const snapshot = useCallback((): SavedMap => ({ nodes, edges, title }), [nodes, edges, title]);
 
+  useEffect(() => {
+    const currentSnapshot = snapshot();
+    setHistory((current) => syncHistoryPresent(current, currentSnapshot));
+  }, [snapshot]);
+
   const remember = useCallback(() => {
     const currentSnapshot = snapshot();
-    setHistory((current) => {
-      const last = current[current.length - 1];
-      // React Flow may emit node-remove and edge-remove separately for one user action.
-      // Store that pre-change state only once so a single Undo restores the whole action.
-      if (last && last.nodes === currentSnapshot.nodes
-        && last.edges === currentSnapshot.edges && last.title === currentSnapshot.title) {
-        return current;
-      }
-      return [...current.slice(-29), currentSnapshot];
-    });
-    setFuture([]);
+    setHistory((current) => recordHistorySnapshot(
+      current,
+      currentSnapshot,
+      30,
+      (left, right) => left.nodes === right.nodes
+        && left.edges === right.edges
+        && left.title === right.title,
+    ));
   }, [snapshot]);
 
   const hierarchyOptions = useMemo(() => {
@@ -312,24 +314,24 @@ export default function HomePage() {
   }, [selectedId, edges, nodes, title, remember, setNodes, setEdges]);
 
   const undo = useCallback(() => {
-    if (!history.length) return;
-    const previous = history[history.length - 1];
-    setFuture((current) => [...current, snapshot()]);
-    setNodes(previous.nodes);
-    setEdges(previous.edges);
-    setTitle(previous.title);
-    setHistory((current) => current.slice(0, -1));
-  }, [history, snapshot, setNodes, setEdges]);
+    const next = undoHistory(history);
+    if (next === history) return;
+    setHistory(next);
+    setNodes(next.present.nodes);
+    setEdges(next.present.edges);
+    setTitle(next.present.title);
+    setSelectedId(next.present.nodes.some((node) => node.id === selectedId) ? selectedId : "root");
+  }, [history, selectedId, setNodes, setEdges]);
 
   const redo = useCallback(() => {
-    if (!future.length) return;
-    const next = future[future.length - 1];
-    setHistory((current) => [...current, snapshot()]);
-    setNodes(next.nodes);
-    setEdges(next.edges);
-    setTitle(next.title);
-    setFuture((current) => current.slice(0, -1));
-  }, [future, snapshot, setNodes, setEdges]);
+    const next = redoHistory(history);
+    if (next === history) return;
+    setHistory(next);
+    setNodes(next.present.nodes);
+    setEdges(next.present.edges);
+    setTitle(next.present.title);
+    setSelectedId(next.present.nodes.some((node) => node.id === selectedId) ? selectedId : "root");
+  }, [history, selectedId, setNodes, setEdges]);
 
   const importJson = useCallback(async (file?: File) => {
     if (!file) return;
@@ -404,8 +406,8 @@ export default function HomePage() {
           <div className="breadcrumb"><span>Workspace</span><ArrowRight size={13} /><strong>{title}</strong><button className="icon-button tiny"><ChevronDown size={14} /></button></div>
           <div className="topbar-actions">
             <div className={saveState === "saved" ? "save-indicator is-saved" : "save-indicator"}><span className="save-dot" />{saveState === "saved" ? "Tersimpan lokal" : saveState === "error" ? "Gagal menyimpan" : "Menyimpan…"}</div>
-            <button className="icon-button" aria-label="Undo" onClick={undo} disabled={!history.length}><Undo2 size={17} /></button>
-            <button className="icon-button" aria-label="Redo" onClick={redo} disabled={!future.length}><Redo2 size={17} /></button>
+            <button className="icon-button" aria-label="Undo" onClick={undo} disabled={!history.past.length}><Undo2 size={17} /></button>
+            <button className="icon-button" aria-label="Redo" onClick={redo} disabled={!history.future.length}><Redo2 size={17} /></button>
             <div className="topbar-divider" />
             <button className="secondary-button hide-small" onClick={() => importInputRef.current?.click()}><FolderOpen size={15} /> Impor</button>
             <button className="secondary-button hide-small" onClick={exportJson}><ArrowDownToLine size={16} /> Ekspor</button>
