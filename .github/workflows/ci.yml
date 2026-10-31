@@ -1,5 +1,7 @@
 name: CI
 
+# Include stacked hardening PRs so security and persistence changes are gated on their exact head.
+
 on:
   push:
     branches: [main, "feat/**", "fix/**", "hardening/**", "ci/**", "security/**"]
