@@ -78,6 +78,39 @@ describe("document lifecycle", () => {
     })).toThrow(/lebih dari satu parent/);
   });
 
+  it("rejects malformed canonical v2 graphs instead of restoring partial state", () => {
+    expect(() => parseStoredMapDocument({
+      format: "mindmap-pro",
+      version: 2,
+      graph: {
+        version: 1,
+        title: "Broken",
+        nodes: [{ id: "root", parentId: "missing", position: { x: 0, y: 0 }, data: { label: "Root" } }],
+        edges: [],
+      },
+    })).toThrow(/root|Parent/);
+  });
+
+  it("preserves cross-link labels and styles through document serialization", () => {
+    const styledEdges: Edge[] = [
+      edges[0],
+      edges[1],
+      {
+        id: "x1",
+        source: "root",
+        target: "b",
+        label: "Related",
+        data: { relation: "cross_link" },
+        style: { stroke: "#123456", strokeWidth: 4 },
+      },
+    ];
+    const loaded = parseStoredMapDocument(JSON.parse(serializeMapDocument("Styled", nodes, styledEdges)));
+    expect(loaded.graph.edges[0]).toMatchObject({
+      label: "Related",
+      style: { stroke: "#123456", strokeWidth: 4 },
+    });
+  });
+
   it("rejects unsupported document versions", () => {
     expect(() => parseStoredMapDocument({
       format: "mindmap-pro", version: 99, graph: {},
