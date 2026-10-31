@@ -45,7 +45,7 @@ import {
 } from "lucide-react";
 import { initialEdges, initialNodes } from "@/lib/demo-map";
 import { parseStoredMapDocument, serializeMapDocument } from "@/lib/domain/document-lifecycle";
-import { addChildTopic, addCrossLink, deleteTopicSubtree, moveTopic, reparentTopic } from "@/lib/domain/graph-commands";
+import { addChildTopic, addCrossLink, deleteTopicSubtree, moveTopic, reparentTopic, updateTopicContent } from "@/lib/domain/graph-commands";
 import { fromCanonicalGraph, toCanonicalGraph } from "@/lib/domain/graph-adapter";
 import { createHistory, recordHistorySnapshot, redoHistory, syncHistoryPresent, undoHistory, type HistoryState } from "@/lib/domain/history";
 
@@ -208,10 +208,14 @@ export default function HomePage() {
 
   const updateSelectedNotes = useCallback((value: string) => {
     if (!selectedId) return;
-    setNodes((current) => current.map((node) => node.id === selectedId
-      ? { ...node, data: { ...node.data, notes: value } }
-      : node));
-  }, [selectedId, setNodes]);
+    try {
+      const graph = toCanonicalGraph(title, nodes, edges);
+      const next = updateTopicContent(graph, selectedId, { notes: value });
+      setNodes(fromCanonicalGraph(next).nodes);
+    } catch (error) {
+      setNotice(error instanceof Error ? `Catatan ditolak: ${error.message}` : "Catatan tidak valid.");
+    }
+  }, [selectedId, title, nodes, edges, setNodes]);
   const onConnect = useCallback((connection: Connection) => {
     if (!connection.source || !connection.target || connection.source === connection.target) {
       setNotice("Koneksi harus menghubungkan dua topik yang berbeda.");
@@ -294,8 +298,14 @@ export default function HomePage() {
 
   const renameSelected = useCallback((value: string) => {
     if (!selectedId) return;
-    setNodes((current) => current.map((node) => node.id === selectedId ? { ...node, data: { ...node.data, label: value } } : node));
-  }, [selectedId, setNodes]);
+    try {
+      const graph = toCanonicalGraph(title, nodes, edges);
+      const next = updateTopicContent(graph, selectedId, { label: value });
+      setNodes(fromCanonicalGraph(next).nodes);
+    } catch (error) {
+      setNotice(error instanceof Error ? `Nama topik ditolak: ${error.message}` : "Nama topik tidak valid.");
+    }
+  }, [selectedId, title, nodes, edges, setNodes]);
 
   const deleteSelected = useCallback(() => {
     if (!selectedId || selectedId === "root") return;
