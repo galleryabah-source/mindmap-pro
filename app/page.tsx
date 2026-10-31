@@ -45,6 +45,7 @@ import {
 } from "lucide-react";
 import { initialEdges, initialNodes } from "@/lib/demo-map";
 import { parseMapDocument } from "@/lib/domain/map-document";
+import { collectHierarchicalSubtreeIds } from "@/lib/domain/graph-commands";
 
 const STORAGE_KEY = "mindmap-pro:local-draft:v1";
 
@@ -201,22 +202,15 @@ export default function HomePage() {
   const deleteSelected = useCallback(() => {
     if (!selectedId || selectedId === "root") return;
     remember();
-    // Only hierarchy edges cascade deletion. Cross-links are references,
-    // not ownership relationships, and must never delete their other endpoint.
-    const hierarchyEdges = edges.filter(
-      (edge) => (edge.data as { relation?: string } | undefined)?.relation !== "cross_link",
+    // Only hierarchy edges cascade deletion; cross-links are non-owning references.
+    const removedIds = collectHierarchicalSubtreeIds(
+      edges.map((edge) => ({
+        source: edge.source,
+        target: edge.target,
+        data: edge.data as { relation?: string } | undefined,
+      })),
+      selectedId,
     );
-    const removedIds = new Set<string>([selectedId]);
-    let changed = true;
-    while (changed) {
-      changed = false;
-      for (const edge of hierarchyEdges) {
-        if (removedIds.has(edge.source) && !removedIds.has(edge.target)) {
-          removedIds.add(edge.target);
-          changed = true;
-        }
-      }
-    }
     setNodes((current) => current.filter((node) => !removedIds.has(node.id)));
     setEdges((current) => current.filter((edge) => !removedIds.has(edge.source) && !removedIds.has(edge.target)));
     setSelectedId("root");
