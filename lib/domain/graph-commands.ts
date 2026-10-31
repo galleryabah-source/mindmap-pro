@@ -120,6 +120,11 @@ export function assertCanonicalGraph(graph: CanonicalGraph): CanonicalGraph {
     }
     for (const id of path) resolved.add(id);
   }
+  const hierarchyEdgeIds = new Set(
+    graph.nodes
+      .filter((node) => node.parentId !== null)
+      .map((node) => `hierarchy:${node.parentId}:${node.id}`),
+  );
   const edgeIds = new Set<string>();
   const pairs = new Set<string>();
   for (const edge of graph.edges) {
@@ -127,6 +132,9 @@ export function assertCanonicalGraph(graph: CanonicalGraph): CanonicalGraph {
     if (edge.type !== "cross_link") throw new Error("Edge graph hanya boleh berupa cross_link.");
     if (typeof edge.id !== "string" || !edge.id.trim() || edge.id.length > MAP_LIMITS.idLength || edgeIds.has(edge.id)) {
       throw new Error("ID cross-link kosong, terlalu panjang, atau duplikat.");
+    }
+    if (hierarchyEdgeIds.has(edge.id)) {
+      throw new Error("ID cross-link bertabrakan dengan ID edge hierarki.");
     }
     if (typeof edge.source !== "string" || !edge.source.trim() || edge.source.length > MAP_LIMITS.idLength
       || typeof edge.target !== "string" || !edge.target.trim() || edge.target.length > MAP_LIMITS.idLength) {
