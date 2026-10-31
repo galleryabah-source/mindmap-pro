@@ -134,11 +134,6 @@ export default function HomePage() {
   const selectedLabel = selectedNode ? String(selectedNode.data.label ?? "Topik baru") : "";
   const snapshot = useCallback((): SavedMap => ({ nodes, edges, title }), [nodes, edges, title]);
 
-  useEffect(() => {
-    const currentSnapshot = snapshot();
-    setHistory((current) => syncHistoryPresent(current, currentSnapshot));
-  }, [snapshot]);
-
   const remember = useCallback(() => {
     const currentSnapshot = snapshot();
     setHistory((current) => recordHistorySnapshot(
@@ -371,24 +366,26 @@ export default function HomePage() {
   }, [selectedId, edges, nodes, title, remember, setNodes, setEdges]);
 
   const undo = useCallback(() => {
-    const next = undoHistory(history);
-    if (next === history) return;
+    const current = syncHistoryPresent(history, snapshot());
+    const next = undoHistory(current);
+    if (next === current) return;
     setHistory(next);
     setNodes(next.present.nodes);
     setEdges(next.present.edges);
     setTitle(next.present.title);
     setSelectedId(next.present.nodes.some((node) => node.id === selectedId) ? selectedId : "root");
-  }, [history, selectedId, setNodes, setEdges]);
+  }, [history, snapshot, selectedId, setNodes, setEdges]);
 
   const redo = useCallback(() => {
-    const next = redoHistory(history);
-    if (next === history) return;
+    const current = syncHistoryPresent(history, snapshot());
+    const next = redoHistory(current);
+    if (next === current) return;
     setHistory(next);
     setNodes(next.present.nodes);
     setEdges(next.present.edges);
     setTitle(next.present.title);
     setSelectedId(next.present.nodes.some((node) => node.id === selectedId) ? selectedId : "root");
-  }, [history, selectedId, setNodes, setEdges]);
+  }, [history, snapshot, selectedId, setNodes, setEdges]);
 
   const importJson = useCallback(async (file?: File) => {
     if (!file) return;
