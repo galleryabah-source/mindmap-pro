@@ -35,6 +35,26 @@ function assertPosition(position: { x: number; y: number }): void {
   }
 }
 
+function collectDescendantIds(nodes: CanonicalTopic[], topicId: string): Set<string> {
+  const childrenByParent = new Map<string, string[]>();
+  for (const node of nodes) {
+    if (node.parentId === null) continue;
+    const children = childrenByParent.get(node.parentId) ?? [];
+    children.push(node.id);
+    childrenByParent.set(node.parentId, children);
+  }
+  const descendants = new Set<string>([topicId]);
+  const queue = [topicId];
+  for (let index = 0; index < queue.length; index += 1) {
+    for (const childId of childrenByParent.get(queue[index]) ?? []) {
+      if (descendants.has(childId)) continue;
+      descendants.add(childId);
+      queue.push(childId);
+    }
+  }
+  return descendants;
+}
+
 function assertUniqueTopicId(nodes: CanonicalTopic[], id: string): void {
   if (!id.trim() || nodes.some((node) => node.id === id)) {
     throw new Error("ID topik kosong atau sudah digunakan.");
@@ -152,17 +172,7 @@ export function deleteTopicSubtree(graph: CanonicalGraph, topicId: string): Cano
   assertCanonicalGraph(graph);
   if (topicId === "root") throw new Error("Topik utama tidak dapat dihapus.");
   if (!graph.nodes.some((node) => node.id === topicId)) return graph;
-  const removed = new Set<string>([topicId]);
-  let changed = true;
-  while (changed) {
-    changed = false;
-    for (const node of graph.nodes) {
-      if (node.parentId !== null && removed.has(node.parentId) && !removed.has(node.id)) {
-        removed.add(node.id);
-        changed = true;
-      }
-    }
-  }
+  const removed = collectDescendantIds(graph.nodes, topicId);
   return assertCanonicalGraph({
     ...graph,
     nodes: graph.nodes.filter((node) => !removed.has(node.id)),
@@ -173,19 +183,10 @@ export function deleteTopicSubtree(graph: CanonicalGraph, topicId: string): Cano
 export function reparentTopic(graph: CanonicalGraph, topicId: string, nextParentId: string): CanonicalGraph {
   assertCanonicalGraph(graph);
   if (topicId === "root") throw new Error("Topik utama tidak dapat dipindahkan.");
+  if (!graph.nodes.some((node) => node.id === topicId)) throw new Error("Topik yang akan dipindahkan tidak ditemukan.");
   if (!graph.nodes.some((node) => node.id === nextParentId)) throw new Error("Parent tujuan tidak ditemukan.");
   if (topicId === nextParentId) throw new Error("Topik tidak dapat menjadi parent dirinya sendiri.");
-  const subtree = new Set<string>([topicId]);
-  let changed = true;
-  while (changed) {
-    changed = false;
-    for (const node of graph.nodes) {
-      if (node.parentId !== null && subtree.has(node.parentId) && !subtree.has(node.id)) {
-        subtree.add(node.id);
-        changed = true;
-      }
-    }
-  }
+  const subtree = collectDescendantIds(graph.nodes, topicId);
   if (subtree.has(nextParentId)) throw new Error("Pemindahan akan membentuk siklus hierarki.");
   return assertCanonicalGraph({
     ...graph,
@@ -214,16 +215,20 @@ export function collectHierarchicalSubtreeIds(
   edges: Array<{ source: string; target: string; data?: { relation?: string } }>,
   topicId: string,
 ): Set<string> {
-  const hierarchyEdges = edges.filter((edge) => edge.data?.relation !== "cross_link");
+  const childrenByParent = new Map<string, string[]>();
+  for (const edge of edges) {
+    if (edge.data?.relation === "cross_link") continue;
+    const children = childrenByParent.get(edge.source) ?? [];
+    children.push(edge.target);
+    childrenByParent.set(edge.source, children);
+  }
   const removed = new Set<string>([topicId]);
-  let changed = true;
-  while (changed) {
-    changed = false;
-    for (const edge of hierarchyEdges) {
-      if (removed.has(edge.source) && !removed.has(edge.target)) {
-        removed.add(edge.target);
-        changed = true;
-      }
+  const queue = [topicId];
+  for (let index = 0; index < queue.length; index += 1) {
+    for (const childId of childrenByParent.get(queue[index]) ?? []) {
+      if (removed.has(childId)) continue;
+      removed.add(childId);
+      queue.push(childId);
     }
   }
   return removed;
@@ -256,7 +261,10 @@ export function updateTopicContent(
   assertCanonicalGraph(graph);
   const current = graph.nodes.find((node) => node.id === topicId);
   if (!current) throw new Error("Topik yang akan diperbarui tidak ditemukan.");
-  if (!isRecord(patch)) throw new Error("Perubahan konten topik tidak valid.");
+  if (!isRecord(patch)
+    || Object.keys(patch).some((key) => key !== "label" && key !== "notes")) {
+    throw new Error("Perubahan konten topik tidak valid.");
+  }
   if (patch.label !== undefined
     && (typeof patch.label !== "string" || patch.label.length > MAP_LIMITS.labelLength)) {
     throw new Error("Nama topik tidak valid atau melebihi batas 2000 karakter.");
