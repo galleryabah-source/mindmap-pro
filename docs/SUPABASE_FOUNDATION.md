@@ -15,6 +15,10 @@ Migration `supabase/migrations/202610260001_initial_workspace_map_schema.sql` de
 - workspace membership/role helpers and authenticated `create_workspace` RPC
 - RLS policies, query indexes and a cycle-prevention trigger that serializes parent changes per map
 
+## Canonical write contract
+
+Future map creation and graph commits must follow [Canonical Persistence Write Contract](CANONICAL_PERSISTENCE_WRITE_CONTRACT.md). It defines server-derived identity, workspace authorization, atomic graph/revision/audit writes, optimistic concurrency, idempotent retries and failure semantics. It is a design contract only; no graph write RPC or cloud persistence is implemented yet.
+
 ## Local configuration
 Copy `.env.example` to `.env.local`, then fill in only the URL and publishable key from the dedicated MindMap Pro project:
 - `NEXT_PUBLIC_SUPABASE_URL`
