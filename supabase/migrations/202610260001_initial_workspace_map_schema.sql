@@ -81,7 +81,7 @@ create or replace function public.prevent_topic_parent_cycle()
 returns trigger
 language plpgsql
 set search_path = ''
-as $
+as $$
 declare
   v_cycle_found boolean;
 begin
@@ -119,7 +119,7 @@ begin
 
   return new;
 end;
-$;
+$$;
 
 drop trigger if exists topics_prevent_parent_cycle on public.topics;
 create trigger topics_prevent_parent_cycle
@@ -217,7 +217,7 @@ create or replace function public.guard_immutable_identity()
 returns trigger
 language plpgsql
 set search_path = ''
-as $
+as $$
 declare
   v_column text;
 begin
@@ -229,7 +229,7 @@ begin
   end loop;
   return new;
 end;
-$;
+$$;
 
 drop trigger if exists maps_guard_identity on public.maps;
 create trigger maps_guard_identity
@@ -334,12 +334,6 @@ create policy workspaces_select_member on public.workspaces
 for select to authenticated
 using (public.is_workspace_member(id));
 
-drop policy if exists workspaces_update_admin on public.workspaces;
-create policy workspaces_update_admin on public.workspaces
-for update to authenticated
-using (public.has_workspace_role(id, array['owner', 'admin']))
-with check (public.has_workspace_role(id, array['owner', 'admin']));
-
 drop policy if exists workspace_members_select_same_workspace on public.workspace_members;
 create policy workspace_members_select_same_workspace on public.workspace_members
 for select to authenticated
@@ -350,69 +344,15 @@ create policy maps_select_member on public.maps
 for select to authenticated
 using (public.is_workspace_member(workspace_id));
 
-drop policy if exists maps_insert_editor on public.maps;
-create policy maps_insert_editor on public.maps
-for insert to authenticated
-with check (public.has_workspace_role(workspace_id, array['owner', 'admin', 'editor']) and created_by = (select auth.uid()));
-
-drop policy if exists maps_update_editor on public.maps;
-create policy maps_update_editor on public.maps
-for update to authenticated
-using (public.has_workspace_role(workspace_id, array['owner', 'admin', 'editor']))
-with check (public.has_workspace_role(workspace_id, array['owner', 'admin', 'editor']));
-
-drop policy if exists maps_delete_admin on public.maps;
-create policy maps_delete_admin on public.maps
-for delete to authenticated
-using (public.has_workspace_role(workspace_id, array['owner', 'admin']));
-
 drop policy if exists topics_select_member on public.topics;
 create policy topics_select_member on public.topics
 for select to authenticated
 using (exists (select 1 from public.maps m where m.id = map_id and public.is_workspace_member(m.workspace_id)));
 
-drop policy if exists topics_insert_editor on public.topics;
-create policy topics_insert_editor on public.topics
-for insert to authenticated
-with check (
-  created_by = (select auth.uid())
-  and exists (select 1 from public.maps m where m.id = map_id and public.has_workspace_role(m.workspace_id, array['owner', 'admin', 'editor']))
-);
-
-drop policy if exists topics_update_editor on public.topics;
-create policy topics_update_editor on public.topics
-for update to authenticated
-using (exists (select 1 from public.maps m where m.id = map_id and public.has_workspace_role(m.workspace_id, array['owner', 'admin', 'editor'])))
-with check (exists (select 1 from public.maps m where m.id = map_id and public.has_workspace_role(m.workspace_id, array['owner', 'admin', 'editor'])));
-
-drop policy if exists topics_delete_editor on public.topics;
-create policy topics_delete_editor on public.topics
-for delete to authenticated
-using (exists (select 1 from public.maps m where m.id = map_id and public.has_workspace_role(m.workspace_id, array['owner', 'admin', 'editor'])));
-
 drop policy if exists map_edges_select_member on public.map_edges;
 create policy map_edges_select_member on public.map_edges
 for select to authenticated
 using (exists (select 1 from public.maps m where m.id = map_id and public.is_workspace_member(m.workspace_id)));
-
-drop policy if exists map_edges_insert_editor on public.map_edges;
-create policy map_edges_insert_editor on public.map_edges
-for insert to authenticated
-with check (
-  created_by = (select auth.uid())
-  and exists (select 1 from public.maps m where m.id = map_id and public.has_workspace_role(m.workspace_id, array['owner', 'admin', 'editor']))
-);
-
-drop policy if exists map_edges_update_editor on public.map_edges;
-create policy map_edges_update_editor on public.map_edges
-for update to authenticated
-using (exists (select 1 from public.maps m where m.id = map_id and public.has_workspace_role(m.workspace_id, array['owner', 'admin', 'editor'])))
-with check (exists (select 1 from public.maps m where m.id = map_id and public.has_workspace_role(m.workspace_id, array['owner', 'admin', 'editor'])));
-
-drop policy if exists map_edges_delete_editor on public.map_edges;
-create policy map_edges_delete_editor on public.map_edges
-for delete to authenticated
-using (exists (select 1 from public.maps m where m.id = map_id and public.has_workspace_role(m.workspace_id, array['owner', 'admin', 'editor'])));
 
 drop policy if exists map_revisions_select_member on public.map_revisions;
 create policy map_revisions_select_member on public.map_revisions
@@ -428,14 +368,17 @@ using (public.has_workspace_role(workspace_id, array['owner', 'admin']));
 -- No client INSERT/UPDATE/DELETE policies for audit_events.
 -- The create_workspace RPC is security-definer and writes its own audit record.
 
+-- Fail closed: authenticated clients may read canonical data but cannot mutate it directly.
+-- Graph writes must be introduced only through audited, atomic SECURITY DEFINER RPCs.
+-- Until those RPCs exist, cloud persistence remains intentionally unavailable.
 revoke all on public.workspaces, public.workspace_members, public.maps, public.topics,
   public.map_edges, public.map_revisions, public.audit_events from anon, authenticated;
 
-grant select, update on public.workspaces to authenticated;
+grant select on public.workspaces to authenticated;
 grant select on public.workspace_members to authenticated;
-grant select, insert, update, delete on public.maps to authenticated;
-grant select, insert, update, delete on public.topics to authenticated;
-grant select, insert, update, delete on public.map_edges to authenticated;
+grant select on public.maps to authenticated;
+grant select on public.topics to authenticated;
+grant select on public.map_edges to authenticated;
 grant select on public.map_revisions to authenticated;
 grant select on public.audit_events to authenticated;
 

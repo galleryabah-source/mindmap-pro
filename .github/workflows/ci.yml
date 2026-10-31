@@ -1,10 +1,12 @@
 name: CI
 
+# Include stacked hardening PRs so security and persistence changes are gated on their exact head.
+
 on:
   push:
     branches: [main, "feat/**", "fix/**", "hardening/**", "ci/**", "security/**"]
   pull_request:
-    branches: [main, "feat/**", "security/**"]
+    branches: [main, "feat/**", "security/**", "hardening/**", "ci/**"]
 
 permissions:
   contents: read
@@ -59,3 +61,19 @@ jobs:
         run: npm test
       - name: Production build
         run: npm run build
+
+  database:
+    name: PostgreSQL migration and pgTAP
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Start isolated local database and apply migrations
+        run: supabase db start
+      - name: Run database security tests
+        run: supabase test db

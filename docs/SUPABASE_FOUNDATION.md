@@ -27,15 +27,16 @@ The code uses `@supabase/ssr` browser/server clients and a Next.js 16 `proxy.ts`
 - Workspace membership is checked in RLS, not only in the UI.
 - `owner`, `admin`, `editor`, and `viewer` are distinct roles. Viewer mutations are not permitted by the RLS policies.
 - The `create_workspace` RPC creates the workspace, owner membership and audit record in one transaction.
-- Membership changes and revision writes are intentionally denied to direct client requests until audited server-side RPCs are implemented.
-- Audit events have no direct client write policy. Audited write RPCs/triggers are still required for map/topic/edge mutations before production.
+- Authenticated clients currently have read-only table privileges for workspace/map/topic/edge data. Direct INSERT/UPDATE/DELETE is revoked for workspaces, maps, topics and cross-links; RLS policies alone are not treated as the write boundary.
+- The only initial mutation entry point is the atomic `create_workspace` SECURITY DEFINER RPC. Map creation, graph commands, membership changes, revision writes and audit writes remain unavailable until dedicated server-side RPCs enforce authorization, optimistic concurrency, atomic revision snapshots and audit records.
+- This is an intentional fail-closed state: do not enable cloud persistence or add client-side table writes as a workaround.
 - The topic parent foreign key prevents cross-map parenting, and a per-map lock plus recursive trigger rejects parent cycles. This requires concurrent database tests before production.
 - RLS policies and SECURITY DEFINER functions require validation against a dedicated project with authenticated test users before production use.
 - Never put service-role keys or database credentials in `NEXT_PUBLIC_*` variables.
 - Do not run this migration against unrelated existing projects such as `MTA DETENI` or `galleryabah`.
 
 ## Validation
-A pgTAP starter suite lives at `supabase/tests/001_schema_security.test.sql`. It checks required tables, RLS enablement, security helpers, and direct-write restrictions for audit/revision tables. The suite and migration have not yet been run against a dedicated database.
+A pgTAP suite lives at `supabase/tests/001_schema_security.test.sql`. It checks required tables, RLS enablement, security helpers, immutable identities, SECURITY DEFINER RPC execution grants, and the fail-closed direct-write boundary across workspace/map/topic/edge/revision/audit tables. The current suite contains 57 assertions. The suite and migration have not yet been run against a dedicated database.
 
 ## Apply checklist
 1. Create/identify a dedicated Supabase project named MindMap Pro and verify its project ref and expected cost.
