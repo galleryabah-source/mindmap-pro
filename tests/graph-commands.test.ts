@@ -63,6 +63,28 @@ describe("canonical graph commands", () => {
     expect(() => assertCanonicalGraph(invalid)).toThrow(/Parent/);
   });
 
+  it("rejects coordinates outside the document safety boundary", () => {
+    const invalid = graph();
+    invalid.nodes[1].position.x = 10_000_001;
+    expect(() => assertCanonicalGraph(invalid)).toThrow(/koordinat/i);
+  });
+
+  it("rejects oversized topic notes", () => {
+    const invalid = graph();
+    invalid.nodes[1].data.notes = "x".repeat(50_001);
+    expect(() => assertCanonicalGraph(invalid)).toThrow(/Catatan/i);
+  });
+
+  it("validates mutations against the same canonical limits", () => {
+    expect(() => addChildTopic(graph(), {
+      id: "too-long-notes",
+      parentId: "root",
+      label: "Valid label",
+      position: { x: 1, y: 1 },
+      notes: "x".repeat(50_001),
+    })).toThrow(/Catatan/i);
+  });
+
   it("rejects root deletion", () => {
     expect(() => deleteTopicSubtree(graph(), "root")).toThrow(/utama/);
   });
