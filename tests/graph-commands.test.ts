@@ -127,6 +127,21 @@ describe("canonical graph commands", () => {
     expect(() => moveTopic(graph(), "b", { x: Number.NaN, y: 0 })).toThrow(/Posisi/);
   });
 
+  it("returns validation errors for malformed runtime graph entries", () => {
+    const malformed = graph();
+    (malformed.nodes as unknown[])[1] = null;
+    expect(() => assertCanonicalGraph(malformed)).toThrow(/Struktur topik/);
+  });
+
+  it("rejects malformed command input without leaking runtime TypeErrors", () => {
+    expect(() => addChildTopic(graph(), {
+      id: "" as unknown as string,
+      parentId: "root",
+      label: "Topic",
+      position: { x: 0, y: 0 },
+    })).toThrow(/ID topik/);
+  });
+
   it("rejects root deletion", () => {
     expect(() => deleteTopicSubtree(graph(), "root")).toThrow(/utama/);
   });
