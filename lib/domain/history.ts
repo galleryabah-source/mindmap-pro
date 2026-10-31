@@ -44,3 +44,30 @@ export function redoHistory<T>(state: HistoryState<T>): HistoryState<T> {
     future: state.future.slice(1),
   };
 }
+
+/** Records the current snapshot before a UI mutation begins. */
+export function recordHistorySnapshot<T>(
+  state: HistoryState<T>,
+  snapshot: T,
+  limit = DEFAULT_HISTORY_LIMIT,
+): HistoryState<T> {
+  if (!Number.isInteger(limit) || limit < 1) {
+    throw new Error("Batas riwayat harus berupa bilangan bulat positif.");
+  }
+  const last = state.past[state.past.length - 1];
+  if (Object.is(last, snapshot)) return state;
+  return {
+    ...state,
+    past: [...state.past, snapshot].slice(-limit),
+    future: [],
+  };
+}
+
+/** Synchronizes the live editor snapshot without creating a new undo step. */
+export function syncHistoryPresent<T>(
+  state: HistoryState<T>,
+  present: T,
+): HistoryState<T> {
+  if (Object.is(state.present, present)) return state;
+  return { ...state, present };
+}
