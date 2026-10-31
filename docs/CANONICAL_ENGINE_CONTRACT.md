@@ -27,8 +27,9 @@ All graph mutations should pass through validated domain commands:
 - `reparentTopic`
 - `deleteTopicSubtree`
 - `addCrossLink`
+- `deleteCrossLinks`
 
-A command validates the incoming graph and the proposed mutation, then returns a new validated graph. UI components must not implement independent hierarchy rules.
+A command validates the incoming graph and the proposed mutation, then returns a new validated graph. UI components must not implement independent hierarchy rules. React Flow keyboard deletion is intercepted before mutation and routed through canonical delete commands; hierarchy edges cannot be detached as if they were cross-links.
 
 ## Adapter boundary
 
