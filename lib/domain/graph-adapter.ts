@@ -43,13 +43,16 @@ export function toCanonicalGraph(
   const canonical: CanonicalGraph = {
     version: 1,
     title,
-    nodes: nodes.map((node) => ({
-      ...node,
-      parentId: node.id === "root" ? null : parentById.get(node.id) ?? null,
-      position: node.position,
-      data: node.data as { label: string; notes?: string; [key: string]: unknown },
-      ...(node.style === undefined ? {} : { style: node.style as unknown as Record<string, unknown> }),
-    })),
+    nodes: nodes.map((node) => {
+      const { style, ...nodeFields } = node;
+      return {
+        ...nodeFields,
+        parentId: node.id === "root" ? null : parentById.get(node.id) ?? null,
+        position: node.position,
+        data: node.data as { label: string; notes?: string; [key: string]: unknown },
+        ...(style === undefined ? {} : { style: style as unknown as Record<string, unknown> }),
+      };
+    }),
     edges: crossLinks,
   };
 
