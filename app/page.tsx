@@ -60,7 +60,7 @@ export default function HomePage() {
   const [title, setTitle] = useState("Ruang ide saya");
   const [selectedId, setSelectedId] = useState<string | null>("root");
   const [searchTerm, setSearchTerm] = useState("");
-  const [saveState, setSaveState] = useState<"loading" | "saved">("loading");
+  const [saveState, setSaveState] = useState<"loading" | "saved" | "error">("loading");
   const [dark, setDark] = useState(false);
   const [outlineOpen, setOutlineOpen] = useState(true);
   const [inspectorOpen, setInspectorOpen] = useState(true);
@@ -103,7 +103,8 @@ export default function HomePage() {
         window.localStorage.removeItem(LEGACY_STORAGE_KEY);
         setSaveState("saved");
       } catch {
-        setSaveState("loading");
+        setSaveState("error");
+        setNotice("Autosave gagal. Periksa ruang penyimpanan browser dan ekspor dokumen sebagai cadangan.");
       }
     }, 350);
     return () => window.clearTimeout(handle);
@@ -320,7 +321,7 @@ export default function HomePage() {
         <header className="topbar">
           <div className="breadcrumb"><span>Workspace</span><ArrowRight size={13} /><strong>{title}</strong><button className="icon-button tiny"><ChevronDown size={14} /></button></div>
           <div className="topbar-actions">
-            <div className={saveState === "saved" ? "save-indicator is-saved" : "save-indicator"}><span className="save-dot" />{saveState === "saved" ? "Tersimpan lokal" : "Menyimpan…"}</div>
+            <div className={saveState === "saved" ? "save-indicator is-saved" : "save-indicator"}><span className="save-dot" />{saveState === "saved" ? "Tersimpan lokal" : saveState === "error" ? "Gagal menyimpan" : "Menyimpan…"}</div>
             <button className="icon-button" aria-label="Undo" onClick={undo} disabled={!history.length}><Undo2 size={17} /></button>
             <button className="icon-button" aria-label="Redo" onClick={redo} disabled={!future.length}><Redo2 size={17} /></button>
             <div className="topbar-divider" />
