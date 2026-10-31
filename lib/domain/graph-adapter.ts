@@ -62,7 +62,12 @@ export function fromCanonicalGraph(graph: CanonicalGraph): {
   title: string;
 } {
   const valid = assertCanonicalGraph(graph);
-  const nodes: Node[] = valid.nodes.map(({ parentId: _parentId, ...node }) => node as Node);
+  const nodes: Node[] = valid.nodes.map((topic) => {
+    const node = Object.fromEntries(
+      Object.entries(topic).filter(([key]) => key !== "parentId"),
+    );
+    return node as Node;
+  });
   const hierarchyEdges: Edge[] = valid.nodes
     .filter((node) => node.parentId !== null)
     .map((node) => ({
