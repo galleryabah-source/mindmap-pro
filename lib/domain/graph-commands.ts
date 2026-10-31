@@ -123,7 +123,7 @@ export function assertCanonicalGraph(graph: CanonicalGraph): CanonicalGraph {
   const hierarchyEdgeIds = new Set(
     graph.nodes
       .filter((node) => node.parentId !== null)
-      .map((node) => `hierarchy:${node.parentId}:${node.id}`),
+      .map((node) => `hierarchy:${encodeURIComponent(node.parentId as string)}:${encodeURIComponent(node.id)}`),
   );
   const edgeIds = new Set<string>();
   const pairs = new Set<string>();
