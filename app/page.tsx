@@ -16,6 +16,7 @@ import {
   type Node,
   type NodeChange,
   type NodeMouseHandler,
+  type NodeDragHandler,
 } from "@xyflow/react";
 import {
   AlignLeft,
@@ -45,7 +46,8 @@ import {
 } from "lucide-react";
 import { initialEdges, initialNodes } from "@/lib/demo-map";
 import { parseStoredMapDocument, serializeMapDocument } from "@/lib/domain/document-lifecycle";
-import { collectHierarchicalSubtreeIds } from "@/lib/domain/graph-commands";
+import { addChildTopic, addCrossLink, deleteTopicSubtree, moveTopic } from "@/lib/domain/graph-commands";
+import { fromCanonicalGraph, toCanonicalGraph } from "@/lib/domain/graph-adapter";
 
 const STORAGE_KEY = "mindmap-pro:local-draft:v2";
 const LEGACY_STORAGE_KEY = "mindmap-pro:local-draft:v1";
@@ -164,15 +166,34 @@ export default function HomePage() {
       setNotice("Relasi silang antara kedua topik sudah tersedia.");
       return;
     }
-    remember();
-    setEdges((current) => addEdge({
-      ...connection,
-      id: `link-${crypto.randomUUID()}`,
-      type: "smoothstep",
-      data: { relation: "cross_link" },
-      style: { stroke: "#9294bd", strokeWidth: 2, strokeDasharray: "5 4" },
-    }, current));
-  }, [edges, remember, setEdges]);
+    try {
+      const graph = toCanonicalGraph(title, nodes, edges);
+      const next = addCrossLink(graph, {
+        id: `link-${crypto.randomUUID()}`,
+        source: connection.source,
+        target: connection.target,
+      });
+      const visual = fromCanonicalGraph(next);
+      remember();
+      setNodes(visual.nodes);
+      setEdges(visual.edges);
+      setNotice("Relasi silang berhasil ditambahkan.");
+    } catch (error) {
+      setNotice(error instanceof Error ? `Koneksi ditolak: ${error.message}` : "Koneksi tidak valid.");
+    }
+  }, [edges, nodes, title, remember, setNodes, setEdges]);
+
+  const onNodeDragStop: NodeDragHandler = useCallback((_event, node) => {
+    try {
+      const graph = toCanonicalGraph(title, nodes, edges);
+      const next = moveTopic(graph, node.id, node.position);
+      const visual = fromCanonicalGraph(next);
+      setNodes(visual.nodes);
+      setEdges(visual.edges);
+    } catch (error) {
+      setNotice(error instanceof Error ? `Posisi topik ditolak: ${error.message}` : "Posisi topik tidak valid.");
+    }
+  }, [title, nodes, edges, setNodes, setEdges]);
 
   const onNodeClick: NodeMouseHandler = useCallback((_event, node) => {
     setSelectedId(node.id);
@@ -185,26 +206,31 @@ export default function HomePage() {
       ? nodes.find((node) => node.id === selectedId) ?? root
       : root;
     if (!parent) return;
-    remember();
     const id = `topic-${crypto.randomUUID()}`;
-    const newNode: Node = {
-      id,
-      position: { x: parent.position.x + (asChild ? 250 : 80), y: parent.position.y + (asChild ? 105 : 190) },
-      data: { label: "Topik baru" },
-      style: { background: dark ? "#24263a" : "#fff", color: dark ? "#f5f6ff" : "#24253b", border: "1px solid #cfd2ec", borderRadius: 14, padding: "13px 18px", fontWeight: 600, minWidth: 130, boxShadow: "0 8px 22px rgba(27,31,59,.07)" },
-    };
-    setNodes((current) => [...current, newNode]);
-    setEdges((current) => [...current, {
-      id: `edge-${parent.id}-${id}`,
-      source: parent.id,
-      target: id,
-      type: "smoothstep",
-      style: { stroke: "#9294bd", strokeWidth: 2 },
-    }]);
+    try {
+      const graph = toCanonicalGraph(title, nodes, edges);
+      const next = addChildTopic(graph, {
+        id,
+        parentId: parent.id,
+        label: "Topik baru",
+        position: { x: parent.position.x + (asChild ? 250 : 80), y: parent.position.y + (asChild ? 105 : 190) },
+      });
+      const visual = fromCanonicalGraph(next);
+      visual.nodes = visual.nodes.map((node) => node.id !== id ? node : {
+        ...node,
+        style: { background: dark ? "#24263a" : "#fff", color: dark ? "#f5f6ff" : "#24253b", border: "1px solid #cfd2ec", borderRadius: 14, padding: "13px 18px", fontWeight: 600, minWidth: 130, boxShadow: "0 8px 22px rgba(27,31,59,.07)" },
+      });
+      remember();
+      setNodes(visual.nodes);
+      setEdges(visual.edges);
+    } catch (error) {
+      setNotice(error instanceof Error ? `Topik tidak dapat dibuat: ${error.message}` : "Topik tidak dapat dibuat.");
+      return;
+    }
     setSelectedId(id);
     setInspectorOpen(true);
     setMobilePanel("inspector");
-  }, [nodes, selectedId, remember, setNodes, setEdges, dark]);
+  }, [nodes, edges, title, selectedId, remember, setNodes, setEdges, dark]);
 
   const renameSelected = useCallback((value: string) => {
     if (!selectedId) return;
@@ -213,21 +239,19 @@ export default function HomePage() {
 
   const deleteSelected = useCallback(() => {
     if (!selectedId || selectedId === "root") return;
-    remember();
-    // Only hierarchy edges cascade deletion; cross-links are non-owning references.
-    const removedIds = collectHierarchicalSubtreeIds(
-      edges.map((edge) => ({
-        source: edge.source,
-        target: edge.target,
-        data: edge.data as { relation?: string } | undefined,
-      })),
-      selectedId,
-    );
-    setNodes((current) => current.filter((node) => !removedIds.has(node.id)));
-    setEdges((current) => current.filter((edge) => !removedIds.has(edge.source) && !removedIds.has(edge.target)));
-    setSelectedId("root");
-    setNotice("Topik dan subcabangnya dihapus. Gunakan Undo untuk memulihkan.");
-  }, [selectedId, edges, remember, setNodes, setEdges]);
+    try {
+      const graph = toCanonicalGraph(title, nodes, edges);
+      const next = deleteTopicSubtree(graph, selectedId);
+      const visual = fromCanonicalGraph(next);
+      remember();
+      setNodes(visual.nodes);
+      setEdges(visual.edges);
+      setSelectedId("root");
+      setNotice("Topik dan subcabang hierarkis dihapus. Gunakan Undo untuk memulihkan.");
+    } catch (error) {
+      setNotice(error instanceof Error ? `Penghapusan ditolak: ${error.message}` : "Topik tidak dapat dihapus.");
+    }
+  }, [selectedId, edges, nodes, title, remember, setNodes, setEdges]);
 
   const undo = useCallback(() => {
     if (!history.length) return;
@@ -357,7 +381,7 @@ export default function HomePage() {
           <section className="canvas-area" aria-label="Kanvas mind map">
             <div className="canvas-top-label"><span className="canvas-live-dot" /> CANVAS <span>/</span> {nodes.length} NODES</div>
             {!outlineOpen && <button className="floating-open-outline" onClick={() => setOutlineOpen(true)}><AlignLeft size={15} /> Outline</button>}
-            <ReactFlow nodes={nodes} edges={edges} onNodesChange={handleNodesChange} onEdgesChange={handleEdgesChange} onNodeDragStart={remember} onConnect={onConnect} onNodeClick={onNodeClick} fitView fitViewOptions={{ padding: 0.22 }} minZoom={0.15} maxZoom={2} deleteKeyCode={["Backspace", "Delete"]} proOptions={{ hideAttribution: true }}>
+            <ReactFlow nodes={nodes} edges={edges} onNodesChange={handleNodesChange} onEdgesChange={handleEdgesChange} onNodeDragStart={remember} onNodeDragStop={onNodeDragStop} onConnect={onConnect} onNodeClick={onNodeClick} fitView fitViewOptions={{ padding: 0.22 }} minZoom={0.15} maxZoom={2} deleteKeyCode={["Backspace", "Delete"]} proOptions={{ hideAttribution: true }}>
               <Background variant={BackgroundVariant.Dots} gap={22} size={1} color={dark ? "#34364c" : "#dfe2f0"} />
               <Controls position="bottom-left" />
               <MiniMap position="bottom-right" pannable zoomable nodeColor={(node) => node.id === "root" ? "#6968ee" : "#d9dcf6"} maskColor={dark ? "rgba(10,11,22,.65)" : "rgba(246,247,252,.65)"} />
