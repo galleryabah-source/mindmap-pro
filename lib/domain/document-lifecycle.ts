@@ -41,7 +41,22 @@ export function parseStoredMapDocument(input: unknown): LoadedMapDocument {
       nodes: input.nodes,
       edges: input.edges,
     });
-    graph = toCanonicalGraph(legacy.title, legacy.nodes as Node[], legacy.edges as Edge[]);
+    const legacyNodes = legacy.nodes as Node[];
+    const legacyEdges = legacy.edges as Edge[];
+    const parentedIds = new Set(legacyEdges
+      .filter((edge) => (edge.data as { relation?: string } | undefined)?.relation !== "cross_link")
+      .map((edge) => edge.target));
+    // Older editor versions created "free topics" without an edge.
+    // Preserve those topics as root-level branches during migration.
+    const compatibilityEdges = legacyNodes
+      .filter((node) => node.id !== "root" && !parentedIds.has(node.id))
+      .map((node) => ({
+        id: `migration:root:${node.id}`,
+        source: "root",
+        target: node.id,
+        type: "smoothstep",
+      }));
+    graph = toCanonicalGraph(legacy.title, legacyNodes, [...legacyEdges, ...compatibilityEdges]);
     migrated = true;
   }
 
