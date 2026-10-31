@@ -73,6 +73,12 @@ describe("canonical graph commands", () => {
     expect(() => addCrossLink(graph(), { id: "x2", source: "c", target: "b" })).toThrow(/duplikat/i);
   });
 
+  it("rejects cross-link IDs that collide with derived hierarchy edge IDs", () => {
+    const invalid = graph();
+    invalid.edges = [{ id: "hierarchy:root:a", source: "b", target: "c", type: "cross_link" }];
+    expect(() => assertCanonicalGraph(invalid)).toThrow(/bertabrakan/i);
+  });
+
   it("rejects missing parents and disconnected hierarchy", () => {
     const invalid = graph();
     invalid.nodes[1].parentId = "missing";
