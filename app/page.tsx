@@ -12,7 +12,9 @@ import {
   useNodesState,
   type Connection,
   type Edge,
+  type EdgeChange,
   type Node,
+  type NodeChange,
   type NodeMouseHandler,
 } from "@xyflow/react";
 import {
@@ -126,6 +128,22 @@ export default function HomePage() {
     setFuture([]);
   }, [snapshot]);
 
+  const handleNodesChange = useCallback((changes: NodeChange[]) => {
+    if (changes.some((change) => change.type === "remove")) remember();
+    onNodesChange(changes);
+  }, [onNodesChange, remember]);
+
+  const handleEdgesChange = useCallback((changes: EdgeChange[]) => {
+    if (changes.some((change) => change.type === "remove")) remember();
+    onEdgesChange(changes);
+  }, [onEdgesChange, remember]);
+
+  const updateSelectedNotes = useCallback((value: string) => {
+    if (!selectedId) return;
+    setNodes((current) => current.map((node) => node.id === selectedId
+      ? { ...node, data: { ...node.data, notes: value } }
+      : node));
+  }, [selectedId, setNodes]);
   const onConnect = useCallback((connection: Connection) => {
     remember();
     setEdges((current) => addEdge({ ...connection, type: "smoothstep", style: { stroke: "#9294bd", strokeWidth: 2 } }, current));
@@ -308,7 +326,7 @@ export default function HomePage() {
           <section className="canvas-area" aria-label="Kanvas mind map">
             <div className="canvas-top-label"><span className="canvas-live-dot" /> CANVAS <span>/</span> {nodes.length} NODES</div>
             {!outlineOpen && <button className="floating-open-outline" onClick={() => setOutlineOpen(true)}><AlignLeft size={15} /> Outline</button>}
-            <ReactFlow nodes={nodes} edges={edges} onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} onConnect={onConnect} onNodeClick={onNodeClick} fitView fitViewOptions={{ padding: 0.22 }} minZoom={0.15} maxZoom={2} deleteKeyCode={["Backspace", "Delete"]} proOptions={{ hideAttribution: true }}>
+            <ReactFlow nodes={nodes} edges={edges} onNodesChange={handleNodesChange} onEdgesChange={handleEdgesChange} onNodeDragStart={remember} onConnect={onConnect} onNodeClick={onNodeClick} fitView fitViewOptions={{ padding: 0.22 }} minZoom={0.15} maxZoom={2} deleteKeyCode={["Backspace", "Delete"]} proOptions={{ hideAttribution: true }}>
               <Background variant={BackgroundVariant.Dots} gap={22} size={1} color={dark ? "#34364c" : "#dfe2f0"} />
               <Controls position="bottom-left" />
               <MiniMap position="bottom-right" pannable zoomable nodeColor={(node) => node.id === "root" ? "#6968ee" : "#d9dcf6"} maskColor={dark ? "rgba(10,11,22,.65)" : "rgba(246,247,252,.65)"} />
@@ -321,7 +339,7 @@ export default function HomePage() {
             {selectedNode ? <div className="inspector-content">
               <div className="topic-preview"><div className="topic-preview-icon"><GitBranch size={18} /></div><div><strong>{selectedId === "root" ? "Topik utama" : "Topik cabang"}</strong><span>ID: {(selectedId ?? "unknown").slice(0, 15)}</span></div></div>
               <label className="field-label">Nama topik</label><textarea className="topic-name-field" rows={3} value={selectedLabel} onFocus={remember} onChange={(event) => renameSelected(event.target.value)} />
-              <div className="field-label field-label-row">Informasi <span className="optional-label">OPSIONAL</span></div><textarea className="notes-field" rows={4} placeholder="Tambahkan catatan, definisi, atau konteks…" />
+              <div className="field-label field-label-row">Informasi <span className="optional-label">OPSIONAL</span></div><textarea className="notes-field" rows={4} value={String(selectedNode.data.notes ?? "")} onFocus={remember} onChange={(event) => updateSelectedNotes(event.target.value)} placeholder="Tambahkan catatan, definisi, atau konteks…" />
               <div className="inspector-divider" />
               <div className="field-label">Aksi cepat</div>
               <button className="action-row" onClick={() => addTopic(true)}><div className="action-icon lavender"><GitBranch size={15} /></div><span><strong>Tambah cabang</strong><small>Buat subtopik dari pilihan</small></span><Plus size={15} /></button>
