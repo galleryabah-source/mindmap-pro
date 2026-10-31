@@ -125,7 +125,17 @@ export default function HomePage() {
   const snapshot = useCallback((): SavedMap => ({ nodes, edges, title }), [nodes, edges, title]);
 
   const remember = useCallback(() => {
-    setHistory((current) => [...current.slice(-29), snapshot()]);
+    const currentSnapshot = snapshot();
+    setHistory((current) => {
+      const last = current[current.length - 1];
+      // React Flow may emit node-remove and edge-remove separately for one user action.
+      // Store that pre-change state only once so a single Undo restores the whole action.
+      if (last && last.nodes === currentSnapshot.nodes
+        && last.edges === currentSnapshot.edges && last.title === currentSnapshot.title) {
+        return current;
+      }
+      return [...current.slice(-29), currentSnapshot];
+    });
     setFuture([]);
   }, [snapshot]);
 
