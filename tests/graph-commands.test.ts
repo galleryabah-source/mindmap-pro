@@ -158,6 +158,35 @@ describe("canonical graph commands", () => {
     expect(() => updateTopicContent(graph(), "b", { notes: "x".repeat(50001) })).toThrow(/50000/);
   });
 
+  it("deletes a deep subtree using a single descendant traversal", () => {
+    const nodes: CanonicalGraph["nodes"] = [
+      { id: "root", parentId: null, position: { x: 0, y: 0 }, data: { label: "Root" } },
+    ];
+    for (let index = 1; index <= 2000; index += 1) {
+      nodes.push({
+        id: `n-${index}`,
+        parentId: index === 1 ? "root" : `n-${index - 1}`,
+        position: { x: index, y: index },
+        data: { label: `Node ${index}` },
+      });
+    }
+    const deepGraph: CanonicalGraph = { version: 1, title: "Deep graph", nodes, edges: [] };
+    const result = deleteTopicSubtree(deepGraph, "n-1");
+    expect(result.nodes).toHaveLength(1);
+    expect(result.nodes[0].id).toBe("root");
+  });
+
+  it("rejects reparenting a topic that does not exist", () => {
+    expect(() => reparentTopic(graph(), "missing", "root")).toThrow(/Topik yang akan dipindahkan/);
+  });
+
+  it("rejects unknown fields in topic content patches", () => {
+    expect(() => updateTopicContent(graph(), "b", {
+      label: "Valid",
+      admin: true,
+    } as unknown as { label?: string; notes?: string })).toThrow(/konten topik/);
+  });
+
   it("rejects root deletion", () => {
     expect(() => deleteTopicSubtree(graph(), "root")).toThrow(/utama/);
   });
