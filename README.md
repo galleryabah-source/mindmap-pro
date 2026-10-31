@@ -56,3 +56,4 @@ npm run build
 - [Map document validator](lib/domain/map-document.ts)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Canonical engine contract](docs/CANONICAL_ENGINE_CONTRACT.md)
+- [Canonical persistence write contract](docs/CANONICAL_PERSISTENCE_WRITE_CONTRACT.md)
