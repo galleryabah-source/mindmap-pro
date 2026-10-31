@@ -1,8 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ComponentProps } from "react";
 import {
-  addEdge,
   Background,
   BackgroundVariant,
   Controls,
@@ -12,7 +11,9 @@ import {
   useNodesState,
   type Connection,
   type Edge,
+  type EdgeChange,
   type Node,
+  type NodeChange,
   type NodeMouseHandler,
 } from "@xyflow/react";
 import {
@@ -42,30 +43,18 @@ import {
   X,
 } from "lucide-react";
 import { initialEdges, initialNodes } from "@/lib/demo-map";
+import { parseStoredMapDocument, serializeMapDocument } from "@/lib/domain/document-lifecycle";
+import { addChildTopic, addCrossLink, deleteCrossLinks, deleteTopicSubtree, moveTopic, reparentTopic, updateTopicContent } from "@/lib/domain/graph-commands";
+import { fromCanonicalGraph, toCanonicalGraph } from "@/lib/domain/graph-adapter";
+import { createHistory, recordHistorySnapshot, redoHistory, syncHistoryPresent, undoHistory, type HistoryState } from "@/lib/domain/history";
 
-const STORAGE_KEY = "mindmap-pro:local-draft:v1";
+const STORAGE_KEY = "mindmap-pro:local-draft:v2";
+const LEGACY_STORAGE_KEY = "mindmap-pro:local-draft:v1";
+const RECOVERY_STORAGE_KEY = "mindmap-pro:local-draft:recovery";
 
 type SavedMap = { nodes: Node[]; edges: Edge[]; title: string };
 
-function isSavedMap(value: unknown): value is SavedMap {
-  if (!value || typeof value !== "object") return false;
-  const candidate = value as Partial<SavedMap>;
-  if (typeof candidate.title !== "string" || !Array.isArray(candidate.nodes) || !Array.isArray(candidate.edges)) return false;
-  const nodeIds = new Set<string>();
-  for (const item of candidate.nodes) {
-    if (!item || typeof item !== "object") return false;
-    const node = item as Node;
-    if (typeof node.id !== "string" || !node.position || typeof node.position.x !== "number" || typeof node.position.y !== "number" || !node.data || typeof node.data !== "object") return false;
-    nodeIds.add(node.id);
-  }
-  for (const item of candidate.edges) {
-    if (!item || typeof item !== "object") return false;
-    const edge = item as Edge;
-    if (typeof edge.id !== "string" || typeof edge.source !== "string" || typeof edge.target !== "string") return false;
-    if (!nodeIds.has(edge.source) || !nodeIds.has(edge.target)) return false;
-  }
-  return true;
-}
+
 
 export default function HomePage() {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
@@ -73,31 +62,54 @@ export default function HomePage() {
   const [title, setTitle] = useState("Ruang ide saya");
   const [selectedId, setSelectedId] = useState<string | null>("root");
   const [searchTerm, setSearchTerm] = useState("");
-  const [saveState, setSaveState] = useState<"loading" | "saved">("loading");
+  const [saveState, setSaveState] = useState<"loading" | "saved" | "error">("loading");
   const [dark, setDark] = useState(false);
   const [outlineOpen, setOutlineOpen] = useState(true);
   const [inspectorOpen, setInspectorOpen] = useState(true);
   const [mobilePanel, setMobilePanel] = useState<"none" | "outline" | "inspector">("none");
-  const [history, setHistory] = useState<SavedMap[]>([]);
-  const [future, setFuture] = useState<SavedMap[]>([]);
+  const [history, setHistory] = useState<HistoryState<SavedMap>>(() => createHistory({ nodes: initialNodes, edges: initialEdges, title: "Ruang ide saya" }));
   const [ready, setReady] = useState(false);
+  const [restoreSafe, setRestoreSafe] = useState(false);
+  const [recoveryBackupSafe, setRecoveryBackupSafe] = useState(false);
   const [notice, setNotice] = useState("");
   const importInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const handle = window.setTimeout(() => {
+      let raw: string | null = null;
       try {
-        const raw = window.localStorage.getItem(STORAGE_KEY);
+        raw = window.localStorage.getItem(STORAGE_KEY) ?? window.localStorage.getItem(LEGACY_STORAGE_KEY);
         if (raw) {
           const parsed: unknown = JSON.parse(raw);
-          if (isSavedMap(parsed)) {
-            setNodes(parsed.nodes);
-            setEdges(parsed.edges);
-            setTitle(parsed.title);
+          const restored = parseStoredMapDocument(parsed);
+          setNodes(restored.nodes);
+          setEdges(restored.edges);
+          setTitle(restored.title);
+          if (restored.migrated) {
+            setNotice("Draft lama berhasil dimigrasikan ke format dokumen kanonis.");
           }
         }
+        setRestoreSafe(true);
       } catch {
-        // A malformed local draft must not prevent the editor from opening.
+        let recovered = false;
+        if (raw) {
+          try {
+            const existingRecovery = window.localStorage.getItem(RECOVERY_STORAGE_KEY);
+            if (existingRecovery === null) {
+              window.localStorage.setItem(RECOVERY_STORAGE_KEY, raw);
+              recovered = window.localStorage.getItem(RECOVERY_STORAGE_KEY) === raw;
+            } else {
+              recovered = existingRecovery === raw;
+            }
+            if (recovered) setRecoveryBackupSafe(true);
+          } catch {
+            // Preserve the original key; do not overwrite when recovery storage is unavailable.
+          }
+        }
+        setSaveState("error");
+        setNotice(recovered
+          ? "Draft tidak valid. Salinan recovery dibuat dan draft asli dipertahankan; autosave dihentikan."
+          : "Draft tidak dapat dibaca. Draft asli dipertahankan; autosave dihentikan.");
       } finally {
         setReady(true);
       }
@@ -106,18 +118,20 @@ export default function HomePage() {
   }, [setEdges, setNodes]);
 
   useEffect(() => {
-    if (!ready) return;
+    if (!ready || !restoreSafe) return;
     const handle = window.setTimeout(() => {
       try {
-        const payload: SavedMap = { nodes, edges, title };
-        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+        const payload = serializeMapDocument(title, nodes, edges);
+        window.localStorage.setItem(STORAGE_KEY, payload);
+        window.localStorage.removeItem(LEGACY_STORAGE_KEY);
         setSaveState("saved");
       } catch {
-        setSaveState("loading");
+        setSaveState("error");
+        setNotice("Autosave gagal. Periksa ruang penyimpanan browser dan ekspor dokumen sebagai cadangan.");
       }
     }, 350);
     return () => window.clearTimeout(handle);
-  }, [nodes, edges, title, ready]);
+  }, [nodes, edges, title, ready, restoreSafe]);
 
   const selectedNode = useMemo(
     () => nodes.find((node) => node.id === selectedId) ?? null,
@@ -125,115 +139,300 @@ export default function HomePage() {
   );
 
   const selectedLabel = selectedNode ? String(selectedNode.data.label ?? "Topik baru") : "";
-
   const snapshot = useCallback((): SavedMap => ({ nodes, edges, title }), [nodes, edges, title]);
 
   const remember = useCallback(() => {
-    setHistory((current) => [...current.slice(-29), snapshot()]);
-    setFuture([]);
+    const currentSnapshot = snapshot();
+    setHistory((current) => recordHistorySnapshot(
+      current,
+      currentSnapshot,
+      30,
+      (left, right) => left.nodes === right.nodes
+        && left.edges === right.edges
+        && left.title === right.title,
+    ));
   }, [snapshot]);
 
+  const hierarchyOptions = useMemo(() => {
+    if (!selectedId || selectedId === "root") return [];
+    try {
+      const graph = toCanonicalGraph(title, nodes, edges);
+      const childrenByParent = new Map<string, string[]>();
+      for (const topic of graph.nodes) {
+        if (topic.parentId === null) continue;
+        const children = childrenByParent.get(topic.parentId) ?? [];
+        children.push(topic.id);
+        childrenByParent.set(topic.parentId, children);
+      }
+      const blocked = new Set<string>([selectedId]);
+      const queue = [selectedId];
+      for (let index = 0; index < queue.length; index += 1) {
+        for (const childId of childrenByParent.get(queue[index]) ?? []) {
+          if (blocked.has(childId)) continue;
+          blocked.add(childId);
+          queue.push(childId);
+        }
+      }
+      return graph.nodes.filter((topic) => !blocked.has(topic.id));
+    } catch {
+      return [];
+    }
+  }, [selectedId, title, nodes, edges]);
+
+  const selectedParentId = useMemo(() => {
+    if (!selectedId || selectedId === "root") return "";
+    try {
+      return toCanonicalGraph(title, nodes, edges).nodes.find((topic) => topic.id === selectedId)?.parentId ?? "";
+    } catch {
+      return "";
+    }
+  }, [selectedId, title, nodes, edges]);
+
+  const reparentSelected = useCallback((parentId: string) => {
+    if (!selectedId || selectedId === "root") return;
+    try {
+      const graph = toCanonicalGraph(title, nodes, edges);
+      const next = reparentTopic(graph, selectedId, parentId);
+      const visual = fromCanonicalGraph(next);
+      remember();
+      setNodes(visual.nodes);
+      setEdges(visual.edges);
+      setNotice("Hierarki topik berhasil diperbarui.");
+    } catch (error) {
+      setNotice(error instanceof Error ? `Pemindahan parent ditolak: ${error.message}` : "Parent topik tidak valid.");
+    }
+  }, [selectedId, title, nodes, edges, remember, setNodes, setEdges]);
+
+  const handleNodesChange = useCallback((changes: NodeChange[]) => {
+    // Structural deletion must pass through onBeforeDelete and canonical commands.
+    const safeChanges = changes.filter((change) => change.type !== "remove");
+    if (safeChanges.length > 0) onNodesChange(safeChanges);
+  }, [onNodesChange]);
+
+  const handleEdgesChange = useCallback((changes: EdgeChange[]) => {
+    // Hierarchy edges are derived from parentId; raw edge removal is never authoritative.
+    const safeChanges = changes.filter((change) => change.type !== "remove");
+    if (safeChanges.length > 0) onEdgesChange(safeChanges);
+  }, [onEdgesChange]);
+
+  const updateSelectedNotes = useCallback((value: string) => {
+    if (!selectedId) return;
+    try {
+      const graph = toCanonicalGraph(title, nodes, edges);
+      const next = updateTopicContent(graph, selectedId, { notes: value });
+      setNodes(fromCanonicalGraph(next).nodes);
+    } catch (error) {
+      setNotice(error instanceof Error ? `Catatan ditolak: ${error.message}` : "Catatan tidak valid.");
+    }
+  }, [selectedId, title, nodes, edges, setNodes]);
   const onConnect = useCallback((connection: Connection) => {
-    remember();
-    setEdges((current) => addEdge({ ...connection, type: "smoothstep", style: { stroke: "#9294bd", strokeWidth: 2 } }, current));
-  }, [remember, setEdges]);
+    if (!connection.source || !connection.target || connection.source === connection.target) {
+      setNotice("Koneksi harus menghubungkan dua topik yang berbeda.");
+      return;
+    }
+    const duplicate = edges.some((edge) =>
+      (edge.data as { relation?: string } | undefined)?.relation === "cross_link"
+      && ((edge.source === connection.source && edge.target === connection.target)
+        || (edge.source === connection.target && edge.target === connection.source)),
+    );
+    if (duplicate) {
+      setNotice("Relasi silang antara kedua topik sudah tersedia.");
+      return;
+    }
+    try {
+      const graph = toCanonicalGraph(title, nodes, edges);
+      const next = addCrossLink(graph, {
+        id: `link-${crypto.randomUUID()}`,
+        source: connection.source,
+        target: connection.target,
+      });
+      const visual = fromCanonicalGraph(next);
+      remember();
+      setNodes(visual.nodes);
+      setEdges(visual.edges);
+      setNotice("Relasi silang berhasil ditambahkan.");
+    } catch (error) {
+      setNotice(error instanceof Error ? `Koneksi ditolak: ${error.message}` : "Koneksi tidak valid.");
+    }
+  }, [edges, nodes, title, remember, setNodes, setEdges]);
+
+  const onNodeDragStop: NonNullable<ComponentProps<typeof ReactFlow>["onNodeDragStop"]> = useCallback((_event, node) => {
+    try {
+      const graph = toCanonicalGraph(title, nodes, edges);
+      const next = moveTopic(graph, node.id, node.position);
+      const visual = fromCanonicalGraph(next);
+      setNodes(visual.nodes);
+      setEdges(visual.edges);
+    } catch (error) {
+      setNotice(error instanceof Error ? `Posisi topik ditolak: ${error.message}` : "Posisi topik tidak valid.");
+    }
+  }, [title, nodes, edges, setNodes, setEdges]);
 
   const onNodeClick: NodeMouseHandler = useCallback((_event, node) => {
     setSelectedId(node.id);
     setMobilePanel("inspector");
   }, []);
+  const onBeforeDelete = useCallback(async ({
+    nodes: deletingNodes,
+    edges: deletingEdges,
+  }: { nodes: Node[]; edges: Edge[] }) => {
+    if (deletingNodes.length === 0 && deletingEdges.length === 0) return false;
+    try {
+      let next = toCanonicalGraph(title, nodes, edges);
+      if (deletingNodes.length > 0) {
+        const deletingIds = new Set(deletingNodes.map((node) => node.id));
+        const roots = deletingNodes.filter((node) => {
+          const parentId = next.nodes.find((topic) => topic.id === node.id)?.parentId;
+          return parentId === null || parentId === undefined || !deletingIds.has(parentId);
+        });
+        for (const node of roots) {
+          if (next.nodes.some((topic) => topic.id === node.id)) {
+            next = deleteTopicSubtree(next, node.id);
+          }
+        }
+      } else {
+        if (deletingEdges.some((edge) =>
+          (edge.data as { relation?: string } | undefined)?.relation !== "cross_link")) {
+          throw new Error("Koneksi hierarki hanya dapat diubah melalui parent topik.");
+        }
+      }
+      const removedCrossLinks = deletingEdges
+        .filter((edge) => (edge.data as { relation?: string } | undefined)?.relation === "cross_link")
+        .map((edge) => edge.id)
+        .filter((id) => next.edges.some((edge) => edge.id === id));
+      if (removedCrossLinks.length > 0) next = deleteCrossLinks(next, removedCrossLinks);
+      const visual = fromCanonicalGraph(next);
+      remember();
+      setNodes(visual.nodes);
+      setEdges(visual.edges);
+      if (selectedId && !next.nodes.some((node) => node.id === selectedId)) setSelectedId("root");
+      setNotice("Perubahan penghapusan diterapkan melalui canonical command.");
+    } catch (error) {
+      setNotice(error instanceof Error ? `Penghapusan ditolak: ${error.message}` : "Penghapusan tidak valid.");
+    }
+    // The canonical command already applied the operation; prevent React Flow's raw deletion.
+    return false;
+  }, [title, nodes, edges, remember, setNodes, setEdges, selectedId]);
+
 
   const addTopic = useCallback((asChild: boolean) => {
-    const parent = nodes.find((node) => node.id === selectedId) ?? nodes[0];
+    const root = nodes.find((node) => node.id === "root");
+    const parent = asChild
+      ? nodes.find((node) => node.id === selectedId) ?? root
+      : root;
     if (!parent) return;
-    remember();
-    const id = `topic-${Date.now()}`;
-    const newNode: Node = {
-      id,
-      position: { x: parent.position.x + (asChild ? 250 : 80), y: parent.position.y + (asChild ? 105 : 190) },
-      data: { label: "Topik baru" },
-      style: { background: dark ? "#24263a" : "#fff", color: dark ? "#f5f6ff" : "#24253b", border: "1px solid #cfd2ec", borderRadius: 14, padding: "13px 18px", fontWeight: 600, minWidth: 130, boxShadow: "0 8px 22px rgba(27,31,59,.07)" },
-    };
-    setNodes((current) => [...current, newNode]);
-    if (asChild) {
-      setEdges((current) => [...current, { id: `edge-${parent.id}-${id}`, source: parent.id, target: id, type: "smoothstep", style: { stroke: "#9294bd", strokeWidth: 2 } }]);
+    const id = `topic-${crypto.randomUUID()}`;
+    try {
+      const graph = toCanonicalGraph(title, nodes, edges);
+      const next = addChildTopic(graph, {
+        id,
+        parentId: parent.id,
+        label: "Topik baru",
+        position: { x: parent.position.x + (asChild ? 250 : 80), y: parent.position.y + (asChild ? 105 : 190) },
+      });
+      const visual = fromCanonicalGraph(next);
+      visual.nodes = visual.nodes.map((node) => node.id !== id ? node : {
+        ...node,
+        style: { background: dark ? "#24263a" : "#fff", color: dark ? "#f5f6ff" : "#24253b", border: "1px solid #cfd2ec", borderRadius: 14, padding: "13px 18px", fontWeight: 600, minWidth: 130, boxShadow: "0 8px 22px rgba(27,31,59,.07)" },
+      });
+      remember();
+      setNodes(visual.nodes);
+      setEdges(visual.edges);
+    } catch (error) {
+      setNotice(error instanceof Error ? `Topik tidak dapat dibuat: ${error.message}` : "Topik tidak dapat dibuat.");
+      return;
     }
     setSelectedId(id);
     setInspectorOpen(true);
     setMobilePanel("inspector");
-  }, [nodes, selectedId, remember, setNodes, setEdges, dark]);
+  }, [nodes, edges, title, selectedId, remember, setNodes, setEdges, dark]);
 
   const renameSelected = useCallback((value: string) => {
     if (!selectedId) return;
-    setNodes((current) => current.map((node) => node.id === selectedId ? { ...node, data: { ...node.data, label: value } } : node));
-  }, [selectedId, setNodes]);
+    try {
+      const graph = toCanonicalGraph(title, nodes, edges);
+      const next = updateTopicContent(graph, selectedId, { label: value });
+      setNodes(fromCanonicalGraph(next).nodes);
+    } catch (error) {
+      setNotice(error instanceof Error ? `Nama topik ditolak: ${error.message}` : "Nama topik tidak valid.");
+    }
+  }, [selectedId, title, nodes, edges, setNodes]);
 
   const deleteSelected = useCallback(() => {
     if (!selectedId || selectedId === "root") return;
-    remember();
-    const removedIds = new Set<string>([selectedId]);
-    let changed = true;
-    while (changed) {
-      changed = false;
-      for (const edge of edges) {
-        if (removedIds.has(edge.source) && !removedIds.has(edge.target)) {
-          removedIds.add(edge.target);
-          changed = true;
-        }
-      }
+    try {
+      const graph = toCanonicalGraph(title, nodes, edges);
+      const next = deleteTopicSubtree(graph, selectedId);
+      const visual = fromCanonicalGraph(next);
+      remember();
+      setNodes(visual.nodes);
+      setEdges(visual.edges);
+      setSelectedId("root");
+      setNotice("Topik dan subcabang hierarkis dihapus. Gunakan Undo untuk memulihkan.");
+    } catch (error) {
+      setNotice(error instanceof Error ? `Penghapusan ditolak: ${error.message}` : "Topik tidak dapat dihapus.");
     }
-    setNodes((current) => current.filter((node) => !removedIds.has(node.id)));
-    setEdges((current) => current.filter((edge) => !removedIds.has(edge.source) && !removedIds.has(edge.target)));
-    setSelectedId("root");
-    setNotice("Topik dan subcabangnya dihapus. Gunakan Undo untuk memulihkan.");
-  }, [selectedId, edges, remember, setNodes, setEdges]);
+  }, [selectedId, edges, nodes, title, remember, setNodes, setEdges]);
 
   const undo = useCallback(() => {
-    if (!history.length) return;
-    const previous = history[history.length - 1];
-    setFuture((current) => [...current, snapshot()]);
-    setNodes(previous.nodes);
-    setEdges(previous.edges);
-    setTitle(previous.title);
-    setHistory((current) => current.slice(0, -1));
-  }, [history, snapshot, setNodes, setEdges]);
+    const current = syncHistoryPresent(history, snapshot());
+    const next = undoHistory(current);
+    if (next === current) return;
+    setHistory(next);
+    setNodes(next.present.nodes);
+    setEdges(next.present.edges);
+    setTitle(next.present.title);
+    setSelectedId(next.present.nodes.some((node) => node.id === selectedId) ? selectedId : "root");
+  }, [history, snapshot, selectedId, setNodes, setEdges]);
 
   const redo = useCallback(() => {
-    if (!future.length) return;
-    const next = future[future.length - 1];
-    setHistory((current) => [...current, snapshot()]);
-    setNodes(next.nodes);
-    setEdges(next.edges);
-    setTitle(next.title);
-    setFuture((current) => current.slice(0, -1));
-  }, [future, snapshot, setNodes, setEdges]);
+    const current = syncHistoryPresent(history, snapshot());
+    const next = redoHistory(current);
+    if (next === current) return;
+    setHistory(next);
+    setNodes(next.present.nodes);
+    setEdges(next.present.edges);
+    setTitle(next.present.title);
+    setSelectedId(next.present.nodes.some((node) => node.id === selectedId) ? selectedId : "root");
+  }, [history, snapshot, selectedId, setNodes, setEdges]);
 
   const importJson = useCallback(async (file?: File) => {
     if (!file) return;
     try {
-      const parsed: unknown = JSON.parse(await file.text());
-      if (!isSavedMap(parsed)) throw new Error("Struktur file tidak valid atau koneksi merujuk ke topik yang tidak ada.");
+      const raw: unknown = JSON.parse(await file.text());
+      if (!raw || typeof raw !== "object") throw new Error("Dokumen harus berupa objek JSON.");
+      const parsed = parseStoredMapDocument(raw);
       remember();
       setNodes(parsed.nodes);
       setEdges(parsed.edges);
       setTitle(parsed.title);
       setSelectedId(parsed.nodes.some((node) => node.id === "root") ? "root" : parsed.nodes[0]?.id ?? null);
-      setNotice("Impor JSON berhasil divalidasi dan dimuat.");
+      if (!restoreSafe && recoveryBackupSafe) setRestoreSafe(true);
+      setNotice(parsed.migrated
+        ? "Dokumen lama berhasil dimigrasikan dan dimuat."
+        : "Impor dokumen kanonis berhasil divalidasi dan dimuat."
+        + (!restoreSafe && !recoveryBackupSafe ? " Autosave tetap dinonaktifkan karena backup draft lama belum terverifikasi." : ""));
     } catch (error) {
       setNotice(error instanceof Error ? "Impor gagal: " + error.message : "Impor gagal karena file tidak valid.");
     } finally {
       if (importInputRef.current) importInputRef.current.value = "";
     }
-  }, [remember, setNodes, setEdges]);
+  }, [remember, setNodes, setEdges, restoreSafe, recoveryBackupSafe]);
 
   const exportJson = useCallback(() => {
-    const blob = new Blob([JSON.stringify({ version: 1, title, nodes, edges }, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `${title.trim().replace(/[^a-z0-9-_]+/gi, "-").toLowerCase() || "mindmap"}.json`;
-    anchor.click();
-    URL.revokeObjectURL(url);
+    try {
+      const mapDocument = serializeMapDocument(title, nodes, edges);
+      const blob = new Blob([mapDocument], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `${title.trim().replace(/[^a-z0-9-_]+/gi, "-").toLowerCase() || "mindmap"}.json`;
+      anchor.click();
+      anchor.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (error) {
+      setNotice(error instanceof Error ? "Ekspor gagal: " + error.message : "Dokumen tidak dapat diekspor.");
+    }
   }, [title, nodes, edges]);
 
   const visibleNodes = useMemo(() => nodes.filter((node) => String(node.data.label ?? "").toLowerCase().includes(searchTerm.toLowerCase())), [nodes, searchTerm]);
@@ -271,9 +470,9 @@ export default function HomePage() {
         <header className="topbar">
           <div className="breadcrumb"><span>Workspace</span><ArrowRight size={13} /><strong>{title}</strong><button className="icon-button tiny"><ChevronDown size={14} /></button></div>
           <div className="topbar-actions">
-            <div className={saveState === "saved" ? "save-indicator is-saved" : "save-indicator"}><span className="save-dot" />{saveState === "saved" ? "Tersimpan lokal" : "Menyimpan…"}</div>
-            <button className="icon-button" aria-label="Undo" onClick={undo} disabled={!history.length}><Undo2 size={17} /></button>
-            <button className="icon-button" aria-label="Redo" onClick={redo} disabled={!future.length}><Redo2 size={17} /></button>
+            <div className={saveState === "saved" ? "save-indicator is-saved" : "save-indicator"}><span className="save-dot" />{saveState === "saved" ? "Tersimpan lokal" : saveState === "error" ? "Gagal menyimpan" : "Menyimpan…"}</div>
+            <button className="icon-button" aria-label="Undo" onClick={undo} disabled={!history.past.length}><Undo2 size={17} /></button>
+            <button className="icon-button" aria-label="Redo" onClick={redo} disabled={!history.future.length}><Redo2 size={17} /></button>
             <div className="topbar-divider" />
             <button className="secondary-button hide-small" onClick={() => importInputRef.current?.click()}><FolderOpen size={15} /> Impor</button>
             <button className="secondary-button hide-small" onClick={exportJson}><ArrowDownToLine size={16} /> Ekspor</button>
@@ -307,7 +506,7 @@ export default function HomePage() {
           <section className="canvas-area" aria-label="Kanvas mind map">
             <div className="canvas-top-label"><span className="canvas-live-dot" /> CANVAS <span>/</span> {nodes.length} NODES</div>
             {!outlineOpen && <button className="floating-open-outline" onClick={() => setOutlineOpen(true)}><AlignLeft size={15} /> Outline</button>}
-            <ReactFlow nodes={nodes} edges={edges} onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} onConnect={onConnect} onNodeClick={onNodeClick} fitView fitViewOptions={{ padding: 0.22 }} minZoom={0.15} maxZoom={2} deleteKeyCode={["Backspace", "Delete"]} proOptions={{ hideAttribution: true }}>
+            <ReactFlow nodes={nodes} edges={edges} onNodesChange={handleNodesChange} onEdgesChange={handleEdgesChange} onNodeDragStart={remember} onNodeDragStop={onNodeDragStop} onConnect={onConnect} onNodeClick={onNodeClick} onBeforeDelete={onBeforeDelete} fitView fitViewOptions={{ padding: 0.22 }} minZoom={0.15} maxZoom={2} deleteKeyCode={["Backspace", "Delete"]} proOptions={{ hideAttribution: true }}>
               <Background variant={BackgroundVariant.Dots} gap={22} size={1} color={dark ? "#34364c" : "#dfe2f0"} />
               <Controls position="bottom-left" />
               <MiniMap position="bottom-right" pannable zoomable nodeColor={(node) => node.id === "root" ? "#6968ee" : "#d9dcf6"} maskColor={dark ? "rgba(10,11,22,.65)" : "rgba(246,247,252,.65)"} />
@@ -320,7 +519,8 @@ export default function HomePage() {
             {selectedNode ? <div className="inspector-content">
               <div className="topic-preview"><div className="topic-preview-icon"><GitBranch size={18} /></div><div><strong>{selectedId === "root" ? "Topik utama" : "Topik cabang"}</strong><span>ID: {(selectedId ?? "unknown").slice(0, 15)}</span></div></div>
               <label className="field-label">Nama topik</label><textarea className="topic-name-field" rows={3} value={selectedLabel} onFocus={remember} onChange={(event) => renameSelected(event.target.value)} />
-              <div className="field-label field-label-row">Informasi <span className="optional-label">OPSIONAL</span></div><textarea className="notes-field" rows={4} placeholder="Tambahkan catatan, definisi, atau konteks…" />
+              <div className="field-label field-label-row">Informasi <span className="optional-label">OPSIONAL</span></div><textarea className="notes-field" rows={4} value={String(selectedNode.data.notes ?? "")} onFocus={remember} onChange={(event) => updateSelectedNotes(event.target.value)} placeholder="Tambahkan catatan, definisi, atau konteks…" />
+              {selectedId !== "root" && <><label className="field-label" htmlFor="topic-parent">Parent hierarki</label><select id="topic-parent" className="notes-field" value={selectedParentId} onChange={(event) => reparentSelected(event.target.value)}><option value="" disabled>Pilih parent</option>{hierarchyOptions.map((topic) => <option key={topic.id} value={topic.id}>{topic.data.label}</option>)}</select></>}
               <div className="inspector-divider" />
               <div className="field-label">Aksi cepat</div>
               <button className="action-row" onClick={() => addTopic(true)}><div className="action-icon lavender"><GitBranch size={15} /></div><span><strong>Tambah cabang</strong><small>Buat subtopik dari pilihan</small></span><Plus size={15} /></button>
