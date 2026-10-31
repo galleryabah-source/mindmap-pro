@@ -68,20 +68,27 @@ export function assertCanonicalGraph(graph: CanonicalGraph): CanonicalGraph {
   }
   const root = byId.get("root");
   if (!root || root.parentId !== null) throw new Error("Topik root wajib ada dan tidak boleh memiliki parent.");
+  const resolved = new Set<string>(["root"]);
   for (const node of graph.nodes) {
-    if (node.id === "root") continue;
-    if (!node.parentId || !byId.has(node.parentId)) {
-      throw new Error(`Parent topik ${node.id} tidak tersedia.`);
+    if (node.id === "root" || resolved.has(node.id)) continue;
+    const visiting = new Set<string>();
+    const path: string[] = [];
+    let cursor: CanonicalTopic = node;
+    while (cursor.id !== "root" && !resolved.has(cursor.id)) {
+      if (visiting.has(cursor.id)) throw new Error("Siklus hierarki terdeteksi.");
+      visiting.add(cursor.id);
+      path.push(cursor.id);
+      if (typeof cursor.parentId !== "string" || !cursor.parentId) {
+        throw new Error(`Parent topik ${cursor.id} tidak tersedia.`);
+      }
+      const parent = byId.get(cursor.parentId);
+      if (!parent) throw new Error(`Parent topik ${cursor.id} tidak tersedia.`);
+      cursor = parent;
     }
-    const visited = new Set<string>([node.id]);
-    let cursor: CanonicalTopic | undefined = node;
-    while (cursor.parentId !== null) {
-      if (visited.has(cursor.parentId)) throw new Error("Siklus hierarki terdeteksi.");
-      visited.add(cursor.parentId);
-      cursor = byId.get(cursor.parentId);
-      if (!cursor) throw new Error("Rantai parent tidak valid.");
+    if (cursor.id !== "root" && !resolved.has(cursor.id)) {
+      throw new Error("Setiap topik harus berada di bawah root.");
     }
-    if (cursor.id !== "root") throw new Error("Setiap topik harus berada di bawah root.");
+    for (const id of path) resolved.add(id);
   }
   const edgeIds = new Set<string>();
   const pairs = new Set<string>();
