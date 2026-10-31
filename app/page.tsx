@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  addEdge,
   Background,
   BackgroundVariant,
   Controls,
