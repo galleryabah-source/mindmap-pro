@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(43);
+select plan(46);
 
 select has_table('public', 'workspaces', 'workspaces table exists');
 select has_table('public', 'workspace_members', 'workspace_members table exists');
@@ -28,6 +28,9 @@ select ok((select relrowsecurity from pg_class where oid = 'public.audit_events'
 select has_function('public', 'is_workspace_member', array['uuid'], 'workspace membership helper exists');
 select has_function('public', 'has_workspace_role', array['uuid', 'text[]'], 'workspace role helper exists');
 select has_function('public', 'create_workspace', array['text', 'text'], 'atomic workspace creation RPC exists');
+select ok((select prosecdef from pg_proc where oid = 'public.create_workspace(text, text)'::regprocedure), 'workspace creation RPC runs with SECURITY DEFINER');
+select ok(not has_function_privilege('anon', 'public.create_workspace(text, text)', 'EXECUTE'), 'anonymous role cannot execute workspace creation RPC');
+select ok(has_function_privilege('authenticated', 'public.create_workspace(text, text)', 'EXECUTE'), 'authenticated role can execute workspace creation RPC');
 select has_trigger('public', 'topics', 'topics_prevent_parent_cycle', 'topic hierarchy cycle guard exists');
 select has_function('public', 'guard_immutable_identity', array[]::text[], 'immutable identity guard exists');
 select has_trigger('public', 'maps', 'maps_guard_identity', 'map workspace ownership cannot be reassigned');
