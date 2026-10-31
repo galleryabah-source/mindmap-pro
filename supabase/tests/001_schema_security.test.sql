@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(46);
+select plan(57);
 
 select has_table('public', 'workspaces', 'workspaces table exists');
 select has_table('public', 'workspace_members', 'workspace_members table exists');
@@ -28,6 +28,12 @@ select ok((select relrowsecurity from pg_class where oid = 'public.audit_events'
 select has_function('public', 'is_workspace_member', array['uuid'], 'workspace membership helper exists');
 select has_function('public', 'has_workspace_role', array['uuid', 'text[]'], 'workspace role helper exists');
 select has_function('public', 'create_workspace', array['text', 'text'], 'atomic workspace creation RPC exists');
+select ok((select prosecdef from pg_proc where oid = 'public.is_workspace_member(uuid)'::regprocedure), 'membership helper runs with SECURITY DEFINER');
+select ok((select prosecdef from pg_proc where oid = 'public.has_workspace_role(uuid, text[])'::regprocedure), 'role helper runs with SECURITY DEFINER');
+select ok(not has_function_privilege('anon', 'public.is_workspace_member(uuid)', 'EXECUTE'), 'anonymous role cannot execute membership helper');
+select ok(not has_function_privilege('anon', 'public.has_workspace_role(uuid, text[])', 'EXECUTE'), 'anonymous role cannot execute role helper');
+select ok(has_function_privilege('authenticated', 'public.is_workspace_member(uuid)', 'EXECUTE'), 'authenticated role can execute membership helper');
+select ok(has_function_privilege('authenticated', 'public.has_workspace_role(uuid, text[])', 'EXECUTE'), 'authenticated role can execute role helper');
 select ok((select prosecdef from pg_proc where oid = 'public.create_workspace(text, text)'::regprocedure), 'workspace creation RPC runs with SECURITY DEFINER');
 select ok(not has_function_privilege('anon', 'public.create_workspace(text, text)', 'EXECUTE'), 'anonymous role cannot execute workspace creation RPC');
 select ok(has_function_privilege('authenticated', 'public.create_workspace(text, text)', 'EXECUTE'), 'authenticated role can execute workspace creation RPC');
@@ -38,7 +44,12 @@ select has_trigger('public', 'topics', 'topics_guard_identity', 'topic identity 
 select has_trigger('public', 'map_edges', 'map_edges_guard_identity', 'cross-link identity and map scope cannot be reassigned');
 
 select ok(not has_table_privilege('authenticated', 'public.workspace_members', 'INSERT'), 'authenticated role cannot directly change membership');
+select ok(not has_table_privilege('authenticated', 'public.workspace_members', 'UPDATE'), 'authenticated role cannot directly update membership');
+select ok(not has_table_privilege('authenticated', 'public.workspace_members', 'DELETE'), 'authenticated role cannot directly delete membership');
 select ok(not has_table_privilege('authenticated', 'public.audit_events', 'INSERT'), 'authenticated role cannot directly insert audit events');
+select ok(not has_table_privilege('authenticated', 'public.audit_events', 'UPDATE'), 'authenticated role cannot directly update audit events');
+select ok(not has_table_privilege('authenticated', 'public.audit_events', 'DELETE'), 'authenticated role cannot directly delete audit events');
+select ok(not has_table_privilege('authenticated', 'public.map_revisions', 'INSERT'), 'authenticated role cannot directly insert revisions');
 select ok(not has_table_privilege('authenticated', 'public.map_revisions', 'UPDATE'), 'authenticated role cannot update revisions');
 select ok(not has_table_privilege('authenticated', 'public.map_revisions', 'DELETE'), 'authenticated role cannot delete revisions');
 
