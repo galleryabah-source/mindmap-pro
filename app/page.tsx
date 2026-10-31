@@ -155,15 +155,20 @@ export default function HomePage() {
     if (!selectedId || selectedId === "root") return [];
     try {
       const graph = toCanonicalGraph(title, nodes, edges);
+      const childrenByParent = new Map<string, string[]>();
+      for (const topic of graph.nodes) {
+        if (topic.parentId === null) continue;
+        const children = childrenByParent.get(topic.parentId) ?? [];
+        children.push(topic.id);
+        childrenByParent.set(topic.parentId, children);
+      }
       const blocked = new Set<string>([selectedId]);
-      let changed = true;
-      while (changed) {
-        changed = false;
-        for (const topic of graph.nodes) {
-          if (topic.parentId !== null && blocked.has(topic.parentId) && !blocked.has(topic.id)) {
-            blocked.add(topic.id);
-            changed = true;
-          }
+      const queue = [selectedId];
+      for (let index = 0; index < queue.length; index += 1) {
+        for (const childId of childrenByParent.get(queue[index]) ?? []) {
+          if (blocked.has(childId)) continue;
+          blocked.add(childId);
+          queue.push(childId);
         }
       }
       return graph.nodes.filter((topic) => !blocked.has(topic.id));
