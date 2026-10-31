@@ -187,6 +187,21 @@ describe("canonical graph commands", () => {
     } as unknown as { label?: string; notes?: string })).toThrow(/konten topik/);
   });
 
+  it("rejects unsafe top-level node metadata", () => {
+    const invalid = graph();
+    (invalid.nodes[1] as unknown as Record<string, unknown>).onClick = () => undefined;
+    expect(() => assertCanonicalGraph(invalid)).toThrow(/Metadata/);
+  });
+
+  it("rejects unsupported cross-link input properties", () => {
+    expect(() => addCrossLink(graph(), {
+      id: "new-link",
+      source: "a",
+      target: "c",
+      style: { stroke: "red" },
+    } as unknown as { id: string; source: string; target: string; label?: string })).toThrow(/Input cross-link/);
+  });
+
   it("rejects root deletion", () => {
     expect(() => deleteTopicSubtree(graph(), "root")).toThrow(/utama/);
   });
