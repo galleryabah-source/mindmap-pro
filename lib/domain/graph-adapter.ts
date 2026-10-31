@@ -31,6 +31,9 @@ export function toCanonicalGraph(
       });
       continue;
     }
+    if (edge.target === "root") {
+      throw new Error("Topik root tidak boleh memiliki parent hierarki.");
+    }
     if (parentById.has(edge.target)) {
       throw new Error(`Topik ${edge.target} memiliki lebih dari satu parent hierarki.`);
     }
