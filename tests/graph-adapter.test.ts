@@ -56,6 +56,15 @@ describe("canonical graph adapter", () => {
     });
   });
 
+  it("rejects cross-link IDs that collide with generated React Flow hierarchy edges", () => {
+    const colliding: Edge[] = [
+      edges[0],
+      edges[1],
+      { id: "hierarchy:root:a", source: "root", target: "b", data: { relation: "cross_link" } },
+    ];
+    expect(() => toCanonicalGraph("Invalid", nodes, colliding)).toThrow(/bertabrakan/i);
+  });
+
   it("rejects a node with no hierarchy parent", () => {
     expect(() => toCanonicalGraph("Invalid", nodes, [edges[0]])).toThrow(/Parent/);
   });
