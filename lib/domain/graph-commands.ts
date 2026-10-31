@@ -1,4 +1,4 @@
-import { MAP_LIMITS, type MapEdgeDocument, type MapNodeDocument } from "./map-document";
+import { isSafeJsonValue, MAP_LIMITS, type MapEdgeDocument, type MapNodeDocument } from "./map-document";
 
 /**
  * Canonical graph contract:
@@ -64,6 +64,10 @@ export function assertCanonicalGraph(graph: CanonicalGraph): CanonicalGraph {
       && (typeof node.data.notes !== "string" || node.data.notes.length > MAP_LIMITS.notesLength)) {
       throw new Error(`Catatan topik ${node.id} tidak valid.`);
     }
+    if (!isSafeJsonValue(node.data)
+      || (node.style !== undefined && !isSafeJsonValue(node.style))) {
+      throw new Error(`Metadata topik ${node.id} terlalu kompleks atau tidak aman.`);
+    }
     byId.set(node.id, node);
   }
   const root = byId.get("root");
@@ -97,10 +101,15 @@ export function assertCanonicalGraph(graph: CanonicalGraph): CanonicalGraph {
     if (typeof edge.id !== "string" || !edge.id.trim() || edge.id.length > MAP_LIMITS.idLength || edgeIds.has(edge.id)) {
       throw new Error("ID cross-link kosong, terlalu panjang, atau duplikat.");
     }
+    if (typeof edge.source !== "string" || !edge.source.trim() || edge.source.length > MAP_LIMITS.idLength
+      || typeof edge.target !== "string" || !edge.target.trim() || edge.target.length > MAP_LIMITS.idLength) {
+      throw new Error("Endpoint cross-link tidak valid.");
+    }
     if (edge.label !== undefined && (typeof edge.label !== "string" || edge.label.length > 500)) {
       throw new Error("Label cross-link tidak valid.");
     }
-    if (edge.source === edge.target || !byId.has(edge.source) || !byId.has(edge.target)) {
+    if ((edge.style !== undefined && !isSafeJsonValue(edge.style))
+      || edge.source === edge.target || !byId.has(edge.source) || !byId.has(edge.target)) {
       throw new Error("Cross-link harus menghubungkan dua topik berbeda yang tersedia.");
     }
     const pair = [edge.source, edge.target].sort().join("\u0000");
