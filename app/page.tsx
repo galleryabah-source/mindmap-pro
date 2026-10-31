@@ -45,7 +45,7 @@ import {
 } from "lucide-react";
 import { initialEdges, initialNodes } from "@/lib/demo-map";
 import { parseStoredMapDocument, serializeMapDocument } from "@/lib/domain/document-lifecycle";
-import { addChildTopic, addCrossLink, deleteTopicSubtree, moveTopic, reparentTopic, updateTopicContent } from "@/lib/domain/graph-commands";
+import { addChildTopic, addCrossLink, deleteCrossLinks, deleteTopicSubtree, moveTopic, reparentTopic, updateTopicContent } from "@/lib/domain/graph-commands";
 import { fromCanonicalGraph, toCanonicalGraph } from "@/lib/domain/graph-adapter";
 import { createHistory, recordHistorySnapshot, redoHistory, syncHistoryPresent, undoHistory, type HistoryState } from "@/lib/domain/history";
 
@@ -268,6 +268,48 @@ export default function HomePage() {
     setSelectedId(node.id);
     setMobilePanel("inspector");
   }, []);
+  const onBeforeDelete = useCallback(({
+    nodes: deletingNodes,
+    edges: deletingEdges,
+  }: { nodes: Node[]; edges: Edge[] }) => {
+    if (deletingNodes.length === 0 && deletingEdges.length === 0) return false;
+    try {
+      let next = toCanonicalGraph(title, nodes, edges);
+      if (deletingNodes.length > 0) {
+        const deletingIds = new Set(deletingNodes.map((node) => node.id));
+        const roots = deletingNodes.filter((node) => {
+          const parentId = next.nodes.find((topic) => topic.id === node.id)?.parentId;
+          return parentId === null || parentId === undefined || !deletingIds.has(parentId);
+        });
+        for (const node of roots) {
+          if (next.nodes.some((topic) => topic.id === node.id)) {
+            next = deleteTopicSubtree(next, node.id);
+          }
+        }
+      } else {
+        if (deletingEdges.some((edge) =>
+          (edge.data as { relation?: string } | undefined)?.relation !== "cross_link")) {
+          throw new Error("Koneksi hierarki hanya dapat diubah melalui parent topik.");
+        }
+      }
+      const removedCrossLinks = deletingEdges
+        .filter((edge) => (edge.data as { relation?: string } | undefined)?.relation === "cross_link")
+        .map((edge) => edge.id)
+        .filter((id) => next.edges.some((edge) => edge.id === id));
+      if (removedCrossLinks.length > 0) next = deleteCrossLinks(next, removedCrossLinks);
+      const visual = fromCanonicalGraph(next);
+      remember();
+      setNodes(visual.nodes);
+      setEdges(visual.edges);
+      if (selectedId && !next.nodes.some((node) => node.id === selectedId)) setSelectedId("root");
+      setNotice("Perubahan penghapusan diterapkan melalui canonical command.");
+    } catch (error) {
+      setNotice(error instanceof Error ? `Penghapusan ditolak: ${error.message}` : "Penghapusan tidak valid.");
+    }
+    // The canonical command already applied the operation; prevent React Flow's raw deletion.
+    return false;
+  }, [title, nodes, edges, remember, setNodes, setEdges, selectedId]);
+
 
   const addTopic = useCallback((asChild: boolean) => {
     const root = nodes.find((node) => node.id === "root");
@@ -456,7 +498,7 @@ export default function HomePage() {
           <section className="canvas-area" aria-label="Kanvas mind map">
             <div className="canvas-top-label"><span className="canvas-live-dot" /> CANVAS <span>/</span> {nodes.length} NODES</div>
             {!outlineOpen && <button className="floating-open-outline" onClick={() => setOutlineOpen(true)}><AlignLeft size={15} /> Outline</button>}
-            <ReactFlow nodes={nodes} edges={edges} onNodesChange={handleNodesChange} onEdgesChange={handleEdgesChange} onNodeDragStart={remember} onNodeDragStop={onNodeDragStop} onConnect={onConnect} onNodeClick={onNodeClick} fitView fitViewOptions={{ padding: 0.22 }} minZoom={0.15} maxZoom={2} deleteKeyCode={["Backspace", "Delete"]} proOptions={{ hideAttribution: true }}>
+            <ReactFlow nodes={nodes} edges={edges} onNodesChange={handleNodesChange} onEdgesChange={handleEdgesChange} onNodeDragStart={remember} onNodeDragStop={onNodeDragStop} onConnect={onConnect} onNodeClick={onNodeClick} onBeforeDelete={onBeforeDelete} fitView fitViewOptions={{ padding: 0.22 }} minZoom={0.15} maxZoom={2} deleteKeyCode={["Backspace", "Delete"]} proOptions={{ hideAttribution: true }}>
               <Background variant={BackgroundVariant.Dots} gap={22} size={1} color={dark ? "#34364c" : "#dfe2f0"} />
               <Controls position="bottom-left" />
               <MiniMap position="bottom-right" pannable zoomable nodeColor={(node) => node.id === "root" ? "#6968ee" : "#d9dcf6"} maskColor={dark ? "rgba(10,11,22,.65)" : "rgba(246,247,252,.65)"} />
