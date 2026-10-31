@@ -145,9 +145,28 @@ export default function HomePage() {
       : node));
   }, [selectedId, setNodes]);
   const onConnect = useCallback((connection: Connection) => {
+    if (!connection.source || !connection.target || connection.source === connection.target) {
+      setNotice("Koneksi harus menghubungkan dua topik yang berbeda.");
+      return;
+    }
+    const duplicate = edges.some((edge) =>
+      (edge.data as { relation?: string } | undefined)?.relation === "cross_link"
+      && ((edge.source === connection.source && edge.target === connection.target)
+        || (edge.source === connection.target && edge.target === connection.source)),
+    );
+    if (duplicate) {
+      setNotice("Relasi silang antara kedua topik sudah tersedia.");
+      return;
+    }
     remember();
-    setEdges((current) => addEdge({ ...connection, type: "smoothstep", style: { stroke: "#9294bd", strokeWidth: 2 } }, current));
-  }, [remember, setEdges]);
+    setEdges((current) => addEdge({
+      ...connection,
+      id: `link-${crypto.randomUUID()}`,
+      type: "smoothstep",
+      data: { relation: "cross_link" },
+      style: { stroke: "#9294bd", strokeWidth: 2, strokeDasharray: "5 4" },
+    }, current));
+  }, [edges, remember, setEdges]);
 
   const onNodeClick: NodeMouseHandler = useCallback((_event, node) => {
     setSelectedId(node.id);
@@ -158,7 +177,7 @@ export default function HomePage() {
     const parent = nodes.find((node) => node.id === selectedId) ?? nodes[0];
     if (!parent) return;
     remember();
-    const id = `topic-${Date.now()}`;
+    const id = `topic-${crypto.randomUUID()}`;
     const newNode: Node = {
       id,
       position: { x: parent.position.x + (asChild ? 250 : 80), y: parent.position.y + (asChild ? 105 : 190) },
@@ -182,11 +201,16 @@ export default function HomePage() {
   const deleteSelected = useCallback(() => {
     if (!selectedId || selectedId === "root") return;
     remember();
+    // Only hierarchy edges cascade deletion. Cross-links are references,
+    // not ownership relationships, and must never delete their other endpoint.
+    const hierarchyEdges = edges.filter(
+      (edge) => (edge.data as { relation?: string } | undefined)?.relation !== "cross_link",
+    );
     const removedIds = new Set<string>([selectedId]);
     let changed = true;
     while (changed) {
       changed = false;
-      for (const edge of edges) {
+      for (const edge of hierarchyEdges) {
         if (removedIds.has(edge.source) && !removedIds.has(edge.target)) {
           removedIds.add(edge.target);
           changed = true;
