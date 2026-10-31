@@ -45,7 +45,7 @@ import {
 } from "lucide-react";
 import { initialEdges, initialNodes } from "@/lib/demo-map";
 import { parseStoredMapDocument, serializeMapDocument } from "@/lib/domain/document-lifecycle";
-import { addChildTopic, addCrossLink, deleteTopicSubtree, moveTopic } from "@/lib/domain/graph-commands";
+import { addChildTopic, addCrossLink, deleteTopicSubtree, moveTopic, reparentTopic } from "@/lib/domain/graph-commands";
 import { fromCanonicalGraph, toCanonicalGraph } from "@/lib/domain/graph-adapter";
 
 const STORAGE_KEY = "mindmap-pro:local-draft:v2";
@@ -117,6 +117,51 @@ export default function HomePage() {
   );
 
   const selectedLabel = selectedNode ? String(selectedNode.data.label ?? "Topik baru") : "";
+  const hierarchyOptions = useMemo(() => {
+    if (!selectedId || selectedId === "root") return [];
+    try {
+      const graph = toCanonicalGraph(title, nodes, edges);
+      const blocked = new Set<string>([selectedId]);
+      let changed = true;
+      while (changed) {
+        changed = false;
+        for (const topic of graph.nodes) {
+          if (topic.parentId !== null && blocked.has(topic.parentId) && !blocked.has(topic.id)) {
+            blocked.add(topic.id);
+            changed = true;
+          }
+        }
+      }
+      return graph.nodes.filter((topic) => !blocked.has(topic.id));
+    } catch {
+      return [];
+    }
+  }, [selectedId, title, nodes, edges]);
+
+  const selectedParentId = useMemo(() => {
+    if (!selectedId || selectedId === "root") return "";
+    try {
+      return toCanonicalGraph(title, nodes, edges).nodes.find((topic) => topic.id === selectedId)?.parentId ?? "";
+    } catch {
+      return "";
+    }
+  }, [selectedId, title, nodes, edges]);
+
+  const reparentSelected = useCallback((parentId: string) => {
+    if (!selectedId || selectedId === "root") return;
+    try {
+      const graph = toCanonicalGraph(title, nodes, edges);
+      const next = reparentTopic(graph, selectedId, parentId);
+      const visual = fromCanonicalGraph(next);
+      remember();
+      setNodes(visual.nodes);
+      setEdges(visual.edges);
+      setNotice("Hierarki topik berhasil diperbarui.");
+    } catch (error) {
+      setNotice(error instanceof Error ? `Pemindahan parent ditolak: ${error.message}` : "Parent topik tidak valid.");
+    }
+  }, [selectedId, title, nodes, edges, remember, setNodes, setEdges]);
+
 
   const snapshot = useCallback((): SavedMap => ({ nodes, edges, title }), [nodes, edges, title]);
 
@@ -394,6 +439,7 @@ export default function HomePage() {
               <div className="topic-preview"><div className="topic-preview-icon"><GitBranch size={18} /></div><div><strong>{selectedId === "root" ? "Topik utama" : "Topik cabang"}</strong><span>ID: {(selectedId ?? "unknown").slice(0, 15)}</span></div></div>
               <label className="field-label">Nama topik</label><textarea className="topic-name-field" rows={3} value={selectedLabel} onFocus={remember} onChange={(event) => renameSelected(event.target.value)} />
               <div className="field-label field-label-row">Informasi <span className="optional-label">OPSIONAL</span></div><textarea className="notes-field" rows={4} value={String(selectedNode.data.notes ?? "")} onFocus={remember} onChange={(event) => updateSelectedNotes(event.target.value)} placeholder="Tambahkan catatan, definisi, atau konteks…" />
+              {selectedId !== "root" && <><label className="field-label" htmlFor="topic-parent">Parent hierarki</label><select id="topic-parent" className="notes-field" value={selectedParentId} onChange={(event) => reparentSelected(event.target.value)}><option value="" disabled>Pilih parent</option>{hierarchyOptions.map((topic) => <option key={topic.id} value={topic.id}>{topic.data.label}</option>)}</select></>}
               <div className="inspector-divider" />
               <div className="field-label">Aksi cepat</div>
               <button className="action-row" onClick={() => addTopic(true)}><div className="action-icon lavender"><GitBranch size={15} /></div><span><strong>Tambah cabang</strong><small>Buat subtopik dari pilihan</small></span><Plus size={15} /></button>
