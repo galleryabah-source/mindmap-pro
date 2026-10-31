@@ -57,6 +57,17 @@ describe("document lifecycle", () => {
     expect(loaded.title).toBe("Local draft");
   });
 
+  it("migrates legacy free topics as root-level branches", () => {
+    const loaded = parseStoredMapDocument({
+      version: 1,
+      title: "Legacy free topic",
+      nodes,
+      edges: edges.slice(0, 1),
+    });
+    expect(loaded.graph.nodes.find((node) => node.id === "b")?.parentId).toBe("root");
+    expect(loaded.edges.some((edge) => edge.source === "root" && edge.target === "b")).toBe(true);
+  });
+
   it("rejects ambiguous legacy hierarchy rather than guessing", () => {
     const ambiguous = [
       ...edges.filter((edge) => edge.id !== "x1"),
