@@ -44,24 +44,14 @@ import {
   X,
 } from "lucide-react";
 import { initialEdges, initialNodes } from "@/lib/demo-map";
-import { parseMapDocument } from "@/lib/domain/map-document";
+import { parseStoredMapDocument, serializeMapDocument } from "@/lib/domain/document-lifecycle";
 import { collectHierarchicalSubtreeIds } from "@/lib/domain/graph-commands";
 
 const STORAGE_KEY = "mindmap-pro:local-draft:v1";
 
 type SavedMap = { nodes: Node[]; edges: Edge[]; title: string };
 
-function isSavedMap(value: unknown): value is SavedMap {
-  if (!value || typeof value !== "object") return false;
-  const candidate = value as Partial<SavedMap>;
-  if (typeof candidate.title !== "string" || !Array.isArray(candidate.nodes) || !Array.isArray(candidate.edges)) return false;
-  try {
-    parseMapDocument({ version: 1, title: candidate.title, nodes: candidate.nodes, edges: candidate.edges });
-    return true;
-  } catch {
-    return false;
-  }
-}
+
 
 export default function HomePage() {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
@@ -86,10 +76,12 @@ export default function HomePage() {
         const raw = window.localStorage.getItem(STORAGE_KEY);
         if (raw) {
           const parsed: unknown = JSON.parse(raw);
-          if (isSavedMap(parsed)) {
-            setNodes(parsed.nodes);
-            setEdges(parsed.edges);
-            setTitle(parsed.title);
+          const restored = parseStoredMapDocument(parsed);
+          setNodes(restored.nodes);
+          setEdges(restored.edges);
+          setTitle(restored.title);
+          if (restored.migrated) {
+            setNotice("Draft lama berhasil dimigrasikan ke format dokumen kanonis.");
           }
         }
       } catch {
@@ -105,8 +97,8 @@ export default function HomePage() {
     if (!ready) return;
     const handle = window.setTimeout(() => {
       try {
-        const payload: SavedMap = { nodes, edges, title };
-        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+        const payload = serializeMapDocument(title, nodes, edges);
+        window.localStorage.setItem(STORAGE_KEY, payload);
         setSaveState("saved");
       } catch {
         setSaveState("loading");
@@ -185,7 +177,10 @@ export default function HomePage() {
   }, []);
 
   const addTopic = useCallback((asChild: boolean) => {
-    const parent = nodes.find((node) => node.id === selectedId) ?? nodes[0];
+    const root = nodes.find((node) => node.id === "root");
+    const parent = asChild
+      ? nodes.find((node) => node.id === selectedId) ?? root
+      : root;
     if (!parent) return;
     remember();
     const id = `topic-${crypto.randomUUID()}`;
@@ -196,9 +191,13 @@ export default function HomePage() {
       style: { background: dark ? "#24263a" : "#fff", color: dark ? "#f5f6ff" : "#24253b", border: "1px solid #cfd2ec", borderRadius: 14, padding: "13px 18px", fontWeight: 600, minWidth: 130, boxShadow: "0 8px 22px rgba(27,31,59,.07)" },
     };
     setNodes((current) => [...current, newNode]);
-    if (asChild) {
-      setEdges((current) => [...current, { id: `edge-${parent.id}-${id}`, source: parent.id, target: id, type: "smoothstep", style: { stroke: "#9294bd", strokeWidth: 2 } }]);
-    }
+    setEdges((current) => [...current, {
+      id: `edge-${parent.id}-${id}`,
+      source: parent.id,
+      target: id,
+      type: "smoothstep",
+      style: { stroke: "#9294bd", strokeWidth: 2 },
+    }]);
     setSelectedId(id);
     setInspectorOpen(true);
     setMobilePanel("inspector");
@@ -252,14 +251,15 @@ export default function HomePage() {
     try {
       const raw: unknown = JSON.parse(await file.text());
       if (!raw || typeof raw !== "object") throw new Error("Dokumen harus berupa objek JSON.");
-      const candidate = raw as Partial<SavedMap> & { version?: unknown };
-      const parsed = parseMapDocument({ version: candidate.version, title: candidate.title, nodes: candidate.nodes, edges: candidate.edges });
+      const parsed = parseStoredMapDocument(raw);
       remember();
-      setNodes(parsed.nodes as Node[]);
-      setEdges(parsed.edges as Edge[]);
+      setNodes(parsed.nodes);
+      setEdges(parsed.edges);
       setTitle(parsed.title);
       setSelectedId(parsed.nodes.some((node) => node.id === "root") ? "root" : parsed.nodes[0]?.id ?? null);
-      setNotice("Impor JSON berhasil divalidasi dan dimuat.");
+      setNotice(parsed.migrated
+        ? "Dokumen lama berhasil dimigrasikan dan dimuat."
+        : "Impor dokumen kanonis berhasil divalidasi dan dimuat.");
     } catch (error) {
       setNotice(error instanceof Error ? "Impor gagal: " + error.message : "Impor gagal karena file tidak valid.");
     } finally {
@@ -269,8 +269,8 @@ export default function HomePage() {
 
   const exportJson = useCallback(() => {
     try {
-      const mapDocument = parseMapDocument({ version: 1, title, nodes, edges });
-      const blob = new Blob([JSON.stringify(mapDocument, null, 2)], { type: "application/json" });
+      const mapDocument = serializeMapDocument(title, nodes, edges);
+      const blob = new Blob([mapDocument], { type: "application/json" });
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = url;
