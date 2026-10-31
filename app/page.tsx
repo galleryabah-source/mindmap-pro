@@ -47,7 +47,8 @@ import { initialEdges, initialNodes } from "@/lib/demo-map";
 import { parseStoredMapDocument, serializeMapDocument } from "@/lib/domain/document-lifecycle";
 import { collectHierarchicalSubtreeIds } from "@/lib/domain/graph-commands";
 
-const STORAGE_KEY = "mindmap-pro:local-draft:v1";
+const STORAGE_KEY = "mindmap-pro:local-draft:v2";
+const LEGACY_STORAGE_KEY = "mindmap-pro:local-draft:v1";
 
 type SavedMap = { nodes: Node[]; edges: Edge[]; title: string };
 
@@ -73,7 +74,7 @@ export default function HomePage() {
   useEffect(() => {
     const handle = window.setTimeout(() => {
       try {
-        const raw = window.localStorage.getItem(STORAGE_KEY);
+        const raw = window.localStorage.getItem(STORAGE_KEY) ?? window.localStorage.getItem(LEGACY_STORAGE_KEY);
         if (raw) {
           const parsed: unknown = JSON.parse(raw);
           const restored = parseStoredMapDocument(parsed);
@@ -99,6 +100,7 @@ export default function HomePage() {
       try {
         const payload = serializeMapDocument(title, nodes, edges);
         window.localStorage.setItem(STORAGE_KEY, payload);
+        window.localStorage.removeItem(LEGACY_STORAGE_KEY);
         setSaveState("saved");
       } catch {
         setSaveState("loading");
