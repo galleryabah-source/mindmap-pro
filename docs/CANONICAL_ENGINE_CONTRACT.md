@@ -44,7 +44,8 @@ A command validates the incoming graph and the proposed mutation, then returns a
 - Legacy free topics are attached to root during migration to preserve content.
 - Ambiguous multiple-parent legacy structures are rejected rather than guessed.
 - Local autosave writes the v2 key only after restore succeeds.
-- If restore fails, the original draft key is retained, a recovery copy is attempted, and autosave is disabled for that session.
+- If restore fails, the original draft key is retained, a recovery copy is created only when no prior recovery copy exists and verified by read-back, and autosave is disabled for that session.
+- A validated import can resume autosave only when the failed draft has a verified recovery copy; otherwise autosave remains disabled to protect the original data.
 - Local browser storage is not a cloud backup and does not synchronize between devices.
 
 ## History
