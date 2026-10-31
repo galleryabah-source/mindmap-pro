@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(27);
+select plan(31);
 
 select has_table('public', 'workspaces', 'workspaces table exists');
 select has_table('public', 'workspace_members', 'workspace_members table exists');
@@ -29,6 +29,10 @@ select has_function('public', 'is_workspace_member', array['uuid'], 'workspace m
 select has_function('public', 'has_workspace_role', array['uuid', 'text[]'], 'workspace role helper exists');
 select has_function('public', 'create_workspace', array['text', 'text'], 'atomic workspace creation RPC exists');
 select has_trigger('public', 'topics', 'topics_prevent_parent_cycle', 'topic hierarchy cycle guard exists');
+select has_function('public', 'guard_immutable_identity', array[]::text[], 'immutable identity guard exists');
+select has_trigger('public', 'maps', 'maps_guard_identity', 'map workspace ownership cannot be reassigned');
+select has_trigger('public', 'topics', 'topics_guard_identity', 'topic identity and map scope cannot be reassigned');
+select has_trigger('public', 'map_edges', 'map_edges_guard_identity', 'cross-link identity and map scope cannot be reassigned');
 
 select ok(not has_table_privilege('authenticated', 'public.workspace_members', 'INSERT'), 'authenticated role cannot directly change membership');
 select ok(not has_table_privilege('authenticated', 'public.audit_events', 'INSERT'), 'authenticated role cannot directly insert audit events');
