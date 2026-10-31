@@ -118,7 +118,7 @@ export function addChildTopic(graph: CanonicalGraph, input: TopicInput): Canonic
     position: input.position,
     data: { label: input.label, ...(input.notes === undefined ? {} : { notes: input.notes }) },
   };
-  return { ...graph, nodes: [...graph.nodes, node] };
+  return assertCanonicalGraph({ ...graph, nodes: [...graph.nodes, node] });
 }
 
 /** Deletes only the selected topic and its true hierarchical descendants. */
@@ -137,11 +137,11 @@ export function deleteTopicSubtree(graph: CanonicalGraph, topicId: string): Cano
       }
     }
   }
-  return {
+  return assertCanonicalGraph({
     ...graph,
     nodes: graph.nodes.filter((node) => !removed.has(node.id)),
     edges: graph.edges.filter((edge) => !removed.has(edge.source) && !removed.has(edge.target)),
-  };
+  });
 }
 
 export function reparentTopic(graph: CanonicalGraph, topicId: string, nextParentId: string): CanonicalGraph {
@@ -161,10 +161,10 @@ export function reparentTopic(graph: CanonicalGraph, topicId: string, nextParent
     }
   }
   if (subtree.has(nextParentId)) throw new Error("Pemindahan akan membentuk siklus hierarki.");
-  return {
+  return assertCanonicalGraph({
     ...graph,
     nodes: graph.nodes.map((node) => node.id === topicId ? { ...node, parentId: nextParentId } : node),
-  };
+  });
 }
 
 export function addCrossLink(
