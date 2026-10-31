@@ -81,7 +81,7 @@ create or replace function public.prevent_topic_parent_cycle()
 returns trigger
 language plpgsql
 set search_path = ''
-as $
+as $$
 declare
   v_cycle_found boolean;
 begin
@@ -119,7 +119,7 @@ begin
 
   return new;
 end;
-$;
+$$;
 
 drop trigger if exists topics_prevent_parent_cycle on public.topics;
 create trigger topics_prevent_parent_cycle
@@ -217,7 +217,7 @@ create or replace function public.guard_immutable_identity()
 returns trigger
 language plpgsql
 set search_path = ''
-as $
+as $$
 declare
   v_column text;
 begin
@@ -229,7 +229,7 @@ begin
   end loop;
   return new;
 end;
-$;
+$$;
 
 drop trigger if exists maps_guard_identity on public.maps;
 create trigger maps_guard_identity
