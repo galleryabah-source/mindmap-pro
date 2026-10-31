@@ -147,7 +147,7 @@ create table if not exists public.map_edges (
     foreign key (map_id, target_topic_id)
     references public.topics (map_id, id)
     on delete cascade
-    deferrable initially deferred,
+    deferrable initially deferred
 );
 
 -- Cross-links are undirected in the canonical graph contract; reject reversed duplicates too.
