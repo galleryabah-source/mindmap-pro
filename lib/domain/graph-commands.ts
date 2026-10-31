@@ -246,3 +246,29 @@ export function moveTopic(
       : node),
   });
 }
+
+/** Updates editable topic content while preserving identity, hierarchy and visual position. */
+export function updateTopicContent(
+  graph: CanonicalGraph,
+  topicId: string,
+  patch: { label?: string; notes?: string },
+): CanonicalGraph {
+  assertCanonicalGraph(graph);
+  const current = graph.nodes.find((node) => node.id === topicId);
+  if (!current) throw new Error("Topik yang akan diperbarui tidak ditemukan.");
+  if (!isRecord(patch)) throw new Error("Perubahan konten topik tidak valid.");
+  if (patch.label !== undefined
+    && (typeof patch.label !== "string" || patch.label.length > MAP_LIMITS.labelLength)) {
+    throw new Error("Nama topik tidak valid atau melebihi batas 2000 karakter.");
+  }
+  if (patch.notes !== undefined
+    && (typeof patch.notes !== "string" || patch.notes.length > MAP_LIMITS.notesLength)) {
+    throw new Error("Catatan topik tidak valid atau melebihi batas 50000 karakter.");
+  }
+  return assertCanonicalGraph({
+    ...graph,
+    nodes: graph.nodes.map((node) => node.id === topicId
+      ? { ...node, data: { ...node.data, ...patch } }
+      : node),
+  });
+}
