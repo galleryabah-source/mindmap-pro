@@ -33,6 +33,29 @@ describe("canonical graph adapter", () => {
     expect(restored.edges.map((edge) => [edge.source, edge.target])).toEqual([["root", "b"]]);
   });
 
+  it("preserves custom cross-link style and label across adapter round trips", () => {
+    const styledEdges: Edge[] = [
+      edges[0],
+      edges[1],
+      {
+        id: "x1",
+        source: "root",
+        target: "b",
+        type: "smoothstep",
+        label: "Related",
+        data: { relation: "cross_link" },
+        style: { stroke: "#123456", strokeWidth: 4, strokeDasharray: "2 3" },
+      },
+    ];
+    const canonical = toCanonicalGraph("Adapter test", nodes, styledEdges);
+    const visual = fromCanonicalGraph(canonical);
+    const restored = toCanonicalGraph(visual.title, visual.nodes, visual.edges);
+    expect(restored.edges[0]).toMatchObject({
+      label: "Related",
+      style: { stroke: "#123456", strokeWidth: 4, strokeDasharray: "2 3" },
+    });
+  });
+
   it("rejects a node with no hierarchy parent", () => {
     expect(() => toCanonicalGraph("Invalid", nodes, [edges[0]])).toThrow(/Parent/);
   });
