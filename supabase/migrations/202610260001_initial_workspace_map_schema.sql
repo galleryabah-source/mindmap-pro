@@ -61,6 +61,7 @@ create table if not exists public.topics (
   primary key (map_id, id),
   constraint topics_id_map_unique unique (id, map_id),
   constraint topics_no_self_parent check (parent_id is null or parent_id <> id),
+  constraint topics_root_identity check ((parent_id is null) = (id = 'root')),
   constraint topics_parent_same_map_fk
     foreign key (map_id, parent_id)
     references public.topics (map_id, id)
