@@ -23,6 +23,10 @@ export type TopicInput = {
   notes?: string;
 };
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 function assertPosition(position: { x: number; y: number }): void {
   if (!position || !Number.isFinite(position.x) || !Number.isFinite(position.y)
     || Math.abs(position.x) > MAP_LIMITS.coordinateMagnitude
@@ -52,11 +56,12 @@ export function assertCanonicalGraph(graph: CanonicalGraph): CanonicalGraph {
   }
   const byId = new Map<string, CanonicalTopic>();
   for (const node of graph.nodes) {
+    if (!isRecord(node)) throw new Error("Struktur topik canonical tidak valid.");
     if (typeof node.id !== "string" || !node.id.trim() || node.id.length > MAP_LIMITS.idLength || byId.has(node.id)) {
       throw new Error("ID topik kosong, terlalu panjang, atau duplikat.");
     }
     assertPosition(node.position);
-    if (!node.data || typeof node.data !== "object"
+    if (!isRecord(node.data)
       || typeof node.data.label !== "string" || node.data.label.length > MAP_LIMITS.labelLength) {
       throw new Error(`Label topik ${node.id} tidak valid.`);
     }
@@ -65,7 +70,7 @@ export function assertCanonicalGraph(graph: CanonicalGraph): CanonicalGraph {
       throw new Error(`Catatan topik ${node.id} tidak valid.`);
     }
     if (!isSafeJsonValue(node.data)
-      || (node.style !== undefined && !isSafeJsonValue(node.style))) {
+      || (node.style !== undefined && (!isRecord(node.style) || !isSafeJsonValue(node.style)))) {
       throw new Error(`Metadata topik ${node.id} terlalu kompleks atau tidak aman.`);
     }
     byId.set(node.id, node);
@@ -97,6 +102,7 @@ export function assertCanonicalGraph(graph: CanonicalGraph): CanonicalGraph {
   const edgeIds = new Set<string>();
   const pairs = new Set<string>();
   for (const edge of graph.edges) {
+    if (!isRecord(edge)) throw new Error("Struktur cross-link canonical tidak valid.");
     if (edge.type !== "cross_link") throw new Error("Edge graph hanya boleh berupa cross_link.");
     if (typeof edge.id !== "string" || !edge.id.trim() || edge.id.length > MAP_LIMITS.idLength || edgeIds.has(edge.id)) {
       throw new Error("ID cross-link kosong, terlalu panjang, atau duplikat.");
@@ -108,7 +114,7 @@ export function assertCanonicalGraph(graph: CanonicalGraph): CanonicalGraph {
     if (edge.label !== undefined && (typeof edge.label !== "string" || edge.label.length > 500)) {
       throw new Error("Label cross-link tidak valid.");
     }
-    if ((edge.style !== undefined && !isSafeJsonValue(edge.style))
+    if ((edge.style !== undefined && (!isRecord(edge.style) || !isSafeJsonValue(edge.style)))
       || edge.source === edge.target || !byId.has(edge.source) || !byId.has(edge.target)) {
       throw new Error("Cross-link harus menghubungkan dua topik berbeda yang tersedia.");
     }
@@ -122,12 +128,16 @@ export function assertCanonicalGraph(graph: CanonicalGraph): CanonicalGraph {
 
 export function addChildTopic(graph: CanonicalGraph, input: TopicInput): CanonicalGraph {
   assertCanonicalGraph(graph);
+  if (!isRecord(input) || typeof input.id !== "string" || typeof input.parentId !== "string"
+    || typeof input.label !== "string" || !input.position || typeof input.position !== "object") {
+    throw new Error("Input topik baru tidak valid.");
+  }
   assertUniqueTopicId(graph.nodes, input.id);
   if (!graph.nodes.some((node) => node.id === input.parentId)) {
     throw new Error("Parent topik tidak ditemukan.");
   }
   assertPosition(input.position);
-  if (!input.label.trim()) throw new Error("Nama topik wajib diisi.");
+  if (!input.label.trim() || input.label.length > MAP_LIMITS.labelLength) throw new Error("Nama topik wajib diisi dan maksimal 2000 karakter.");
   const node: CanonicalTopic = {
     id: input.id,
     parentId: input.parentId,
@@ -188,6 +198,10 @@ export function addCrossLink(
   input: { id: string; source: string; target: string; label?: string },
 ): CanonicalGraph {
   assertCanonicalGraph(graph);
+  if (!isRecord(input) || typeof input.id !== "string" || typeof input.source !== "string"
+    || typeof input.target !== "string") {
+    throw new Error("Input cross-link tidak valid.");
+  }
   const edge: CanonicalCrossLink = { ...input, type: "cross_link" };
   return assertCanonicalGraph({ ...graph, edges: [...graph.edges, edge] });
 }
