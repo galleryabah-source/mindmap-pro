@@ -42,6 +42,7 @@ import {
   X,
 } from "lucide-react";
 import { initialEdges, initialNodes } from "@/lib/demo-map";
+import { parseMapDocument } from "@/lib/domain/map-document";
 
 const STORAGE_KEY = "mindmap-pro:local-draft:v1";
 
@@ -51,20 +52,12 @@ function isSavedMap(value: unknown): value is SavedMap {
   if (!value || typeof value !== "object") return false;
   const candidate = value as Partial<SavedMap>;
   if (typeof candidate.title !== "string" || !Array.isArray(candidate.nodes) || !Array.isArray(candidate.edges)) return false;
-  const nodeIds = new Set<string>();
-  for (const item of candidate.nodes) {
-    if (!item || typeof item !== "object") return false;
-    const node = item as Node;
-    if (typeof node.id !== "string" || !node.position || typeof node.position.x !== "number" || typeof node.position.y !== "number" || !node.data || typeof node.data !== "object") return false;
-    nodeIds.add(node.id);
+  try {
+    parseMapDocument({ version: 1, title: candidate.title, nodes: candidate.nodes, edges: candidate.edges });
+    return true;
+  } catch {
+    return false;
   }
-  for (const item of candidate.edges) {
-    if (!item || typeof item !== "object") return false;
-    const edge = item as Edge;
-    if (typeof edge.id !== "string" || typeof edge.source !== "string" || typeof edge.target !== "string") return false;
-    if (!nodeIds.has(edge.source) || !nodeIds.has(edge.target)) return false;
-  }
-  return true;
 }
 
 export default function HomePage() {
@@ -211,11 +204,13 @@ export default function HomePage() {
   const importJson = useCallback(async (file?: File) => {
     if (!file) return;
     try {
-      const parsed: unknown = JSON.parse(await file.text());
-      if (!isSavedMap(parsed)) throw new Error("Struktur file tidak valid atau koneksi merujuk ke topik yang tidak ada.");
+      const raw: unknown = JSON.parse(await file.text());
+      if (!raw || typeof raw !== "object") throw new Error("Dokumen harus berupa objek JSON.");
+      const candidate = raw as Partial<SavedMap> & { version?: unknown };
+      const parsed = parseMapDocument({ version: candidate.version, title: candidate.title, nodes: candidate.nodes, edges: candidate.edges });
       remember();
-      setNodes(parsed.nodes);
-      setEdges(parsed.edges);
+      setNodes(parsed.nodes as Node[]);
+      setEdges(parsed.edges as Edge[]);
       setTitle(parsed.title);
       setSelectedId(parsed.nodes.some((node) => node.id === "root") ? "root" : parsed.nodes[0]?.id ?? null);
       setNotice("Impor JSON berhasil divalidasi dan dimuat.");
@@ -227,13 +222,19 @@ export default function HomePage() {
   }, [remember, setNodes, setEdges]);
 
   const exportJson = useCallback(() => {
-    const blob = new Blob([JSON.stringify({ version: 1, title, nodes, edges }, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `${title.trim().replace(/[^a-z0-9-_]+/gi, "-").toLowerCase() || "mindmap"}.json`;
-    anchor.click();
-    URL.revokeObjectURL(url);
+    try {
+      const mapDocument = parseMapDocument({ version: 1, title, nodes, edges });
+      const blob = new Blob([JSON.stringify(mapDocument, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `${title.trim().replace(/[^a-z0-9-_]+/gi, "-").toLowerCase() || "mindmap"}.json`;
+      anchor.click();
+      anchor.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (error) {
+      setNotice(error instanceof Error ? "Ekspor gagal: " + error.message : "Dokumen tidak dapat diekspor.");
+    }
   }, [title, nodes, edges]);
 
   const visibleNodes = useMemo(() => nodes.filter((node) => String(node.data.label ?? "").toLowerCase().includes(searchTerm.toLowerCase())), [nodes, searchTerm]);
