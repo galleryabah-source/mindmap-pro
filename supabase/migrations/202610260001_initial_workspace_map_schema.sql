@@ -210,6 +210,42 @@ drop trigger if exists topics_set_updated_at on public.topics;
 create trigger topics_set_updated_at before update on public.topics
 for each row execute function public.set_updated_at();
 
+-- Keep canonical identity and tenant ownership stable after record creation.
+-- Mutable content is updated through domain commands; moving records between maps
+-- or workspaces must use an explicit, audited transfer workflow (not direct UPDATE).
+create or replace function public.guard_immutable_identity()
+returns trigger
+language plpgsql
+set search_path = ''
+as $
+declare
+  v_column text;
+begin
+  foreach v_column in array tg_argv loop
+    if (to_jsonb(new) -> v_column) is distinct from (to_jsonb(old) -> v_column) then
+      raise exception 'Column % is immutable for this resource', v_column
+        using errcode = '23514';
+    end if;
+  end loop;
+  return new;
+end;
+$;
+
+drop trigger if exists maps_guard_identity on public.maps;
+create trigger maps_guard_identity
+before update on public.maps
+for each row execute function public.guard_immutable_identity('id', 'workspace_id', 'created_by');
+
+drop trigger if exists topics_guard_identity on public.topics;
+create trigger topics_guard_identity
+before update on public.topics
+for each row execute function public.guard_immutable_identity('id', 'map_id', 'created_by');
+
+drop trigger if exists map_edges_guard_identity on public.map_edges;
+create trigger map_edges_guard_identity
+before update on public.map_edges
+for each row execute function public.guard_immutable_identity('id', 'map_id', 'created_by');
+
 create or replace function public.is_workspace_member(p_workspace_id uuid)
 returns boolean
 language sql
