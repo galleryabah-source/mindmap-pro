@@ -56,6 +56,25 @@ describe("canonical graph adapter", () => {
     });
   });
 
+  it("encodes hierarchy IDs so colon-containing topic IDs cannot collide", () => {
+    const nestedNodes: Node[] = [
+      { id: "root", position: { x: 0, y: 0 }, data: { label: "Root" } },
+      { id: "a:b", position: { x: 1, y: 1 }, data: { label: "A:B" } },
+      { id: "c", position: { x: 2, y: 2 }, data: { label: "C" } },
+      { id: "a", position: { x: 3, y: 3 }, data: { label: "A" } },
+      { id: "b:c", position: { x: 4, y: 4 }, data: { label: "B:C" } },
+    ];
+    const nestedEdges: Edge[] = [
+      { id: "h1", source: "root", target: "a:b" },
+      { id: "h2", source: "a:b", target: "c" },
+      { id: "h3", source: "root", target: "a" },
+      { id: "h4", source: "a", target: "b:c" },
+    ];
+    const visual = fromCanonicalGraph(toCanonicalGraph("Encoded IDs", nestedNodes, nestedEdges));
+    const hierarchyIds = visual.edges.map((edge) => edge.id);
+    expect(new Set(hierarchyIds).size).toBe(hierarchyIds.length);
+  });
+
   it("rejects cross-link IDs that collide with generated React Flow hierarchy edges", () => {
     const colliding: Edge[] = [
       edges[0],
