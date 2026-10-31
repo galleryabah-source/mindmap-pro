@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   addChildTopic,
+  collectHierarchicalSubtreeIds,
   addCrossLink,
   assertCanonicalGraph,
   deleteTopicSubtree,
@@ -61,6 +62,15 @@ describe("canonical graph commands", () => {
     const invalid = graph();
     invalid.nodes[1].parentId = "missing";
     expect(() => assertCanonicalGraph(invalid)).toThrow(/Parent/);
+  });
+
+  it("does not cascade visual deletion across cross-links", () => {
+    const ids = collectHierarchicalSubtreeIds([
+      { source: "a", target: "b" },
+      { source: "b", target: "c", data: { relation: "cross_link" } },
+      { source: "a", target: "d" },
+    ], "a");
+    expect([...ids].sort()).toEqual(["a", "b", "d"]);
   });
 
   it("rejects coordinates outside the document safety boundary", () => {
