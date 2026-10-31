@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(31);
+select plan(43);
 
 select has_table('public', 'workspaces', 'workspaces table exists');
 select has_table('public', 'workspace_members', 'workspace_members table exists');
@@ -38,6 +38,19 @@ select ok(not has_table_privilege('authenticated', 'public.workspace_members', '
 select ok(not has_table_privilege('authenticated', 'public.audit_events', 'INSERT'), 'authenticated role cannot directly insert audit events');
 select ok(not has_table_privilege('authenticated', 'public.map_revisions', 'UPDATE'), 'authenticated role cannot update revisions');
 select ok(not has_table_privilege('authenticated', 'public.map_revisions', 'DELETE'), 'authenticated role cannot delete revisions');
+
+select ok(not has_table_privilege('authenticated', 'public.workspaces', 'INSERT'), 'authenticated role cannot directly create workspaces');
+select ok(not has_table_privilege('authenticated', 'public.workspaces', 'UPDATE'), 'authenticated role cannot directly update workspaces');
+select ok(not has_table_privilege('authenticated', 'public.workspaces', 'DELETE'), 'authenticated role cannot directly delete workspaces');
+select ok(not has_table_privilege('authenticated', 'public.maps', 'INSERT'), 'authenticated role cannot directly create maps');
+select ok(not has_table_privilege('authenticated', 'public.maps', 'UPDATE'), 'authenticated role cannot directly update maps');
+select ok(not has_table_privilege('authenticated', 'public.maps', 'DELETE'), 'authenticated role cannot directly delete maps');
+select ok(not has_table_privilege('authenticated', 'public.topics', 'INSERT'), 'authenticated role cannot directly create topics');
+select ok(not has_table_privilege('authenticated', 'public.topics', 'UPDATE'), 'authenticated role cannot directly update topics');
+select ok(not has_table_privilege('authenticated', 'public.topics', 'DELETE'), 'authenticated role cannot directly delete topics');
+select ok(not has_table_privilege('authenticated', 'public.map_edges', 'INSERT'), 'authenticated role cannot directly create cross-links');
+select ok(not has_table_privilege('authenticated', 'public.map_edges', 'UPDATE'), 'authenticated role cannot directly update cross-links');
+select ok(not has_table_privilege('authenticated', 'public.map_edges', 'DELETE'), 'authenticated role cannot directly delete cross-links');
 
 select * from finish();
 rollback;
