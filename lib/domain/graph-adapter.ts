@@ -48,6 +48,7 @@ export function toCanonicalGraph(
       parentId: node.id === "root" ? null : parentById.get(node.id) ?? null,
       position: node.position,
       data: node.data as { label: string; notes?: string; [key: string]: unknown },
+      ...(node.style === undefined ? {} : { style: node.style as unknown as Record<string, unknown> }),
     })),
     edges: crossLinks,
   };
