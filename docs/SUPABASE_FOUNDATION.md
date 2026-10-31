@@ -9,6 +9,7 @@ Migration `supabase/migrations/202610260001_initial_workspace_map_schema.sql` de
 - `maps`, `topics` (canonical hierarchy via `parent_id`), and `map_edges` (cross-links only)
 - Topic and cross-link IDs are text identifiers scoped by `map_id`, matching the canonical graph contract (`root`, `topic-...`, `link-...`); composite keys prevent collisions between maps
 - A partial unique index prevents more than one root topic per map; an undirected unique index rejects reversed duplicate cross-links
+- Immutable-identity triggers prevent changing map IDs/workspace ownership, topic IDs/map scope, and cross-link IDs/map scope through ordinary UPDATE statements; explicit audited transfer workflows are required for any future ownership transfer.
 - immutable-by-policy `map_revisions`
 - restricted-read `audit_events`
 - workspace membership/role helpers and authenticated `create_workspace` RPC
