@@ -214,3 +214,21 @@ export function collectHierarchicalSubtreeIds(
   }
   return removed;
 }
+
+/** Updates a topic's canvas position without changing its hierarchy or links. */
+export function moveTopic(
+  graph: CanonicalGraph,
+  topicId: string,
+  position: { x: number; y: number },
+): CanonicalGraph {
+  assertCanonicalGraph(graph);
+  const topic = graph.nodes.find((node) => node.id === topicId);
+  if (!topic) throw new Error("Topik yang akan dipindahkan tidak ditemukan.");
+  assertPosition(position);
+  return assertCanonicalGraph({
+    ...graph,
+    nodes: graph.nodes.map((node) => node.id === topicId
+      ? { ...node, position: { x: position.x, y: position.y } }
+      : node),
+  });
+}
