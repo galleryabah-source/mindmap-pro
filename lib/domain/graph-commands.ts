@@ -1,4 +1,4 @@
-import type { MapEdgeDocument, MapNodeDocument } from "./map-document";
+import { MAP_LIMITS, type MapEdgeDocument, type MapNodeDocument } from "./map-document";
 
 /**
  * Canonical graph contract:
@@ -24,8 +24,10 @@ export type TopicInput = {
 };
 
 function assertPosition(position: { x: number; y: number }): void {
-  if (!Number.isFinite(position.x) || !Number.isFinite(position.y)) {
-    throw new Error("Posisi topik harus berupa koordinat finite.");
+  if (!position || !Number.isFinite(position.x) || !Number.isFinite(position.y)
+    || Math.abs(position.x) > MAP_LIMITS.coordinateMagnitude
+    || Math.abs(position.y) > MAP_LIMITS.coordinateMagnitude) {
+    throw new Error("Posisi topik tidak valid atau berada di luar batas koordinat.");
   }
 }
 
@@ -36,17 +38,32 @@ function assertUniqueTopicId(nodes: CanonicalTopic[], id: string): void {
 }
 
 export function assertCanonicalGraph(graph: CanonicalGraph): CanonicalGraph {
-  if (graph.version !== 1 || !graph.title.trim()) {
+  if (!graph || typeof graph !== "object" || graph.version !== 1
+    || typeof graph.title !== "string" || !graph.title.trim()
+    || graph.title.length > MAP_LIMITS.titleLength) {
     throw new Error("Identitas dokumen graph tidak valid.");
   }
-  if (!Array.isArray(graph.nodes) || graph.nodes.length === 0) {
-    throw new Error("Graph wajib memiliki topik utama.");
+  if (!Array.isArray(graph.nodes) || graph.nodes.length === 0
+    || graph.nodes.length > MAP_LIMITS.nodeCount) {
+    throw new Error("Graph wajib memiliki 1–5000 topik.");
+  }
+  if (!Array.isArray(graph.edges) || graph.edges.length > MAP_LIMITS.edgeCount) {
+    throw new Error("Jumlah cross-link tidak valid (maksimal 10000).");
   }
   const byId = new Map<string, CanonicalTopic>();
   for (const node of graph.nodes) {
-    if (!node.id || byId.has(node.id)) throw new Error("ID topik kosong atau duplikat.");
+    if (typeof node.id !== "string" || !node.id.trim() || node.id.length > MAP_LIMITS.idLength || byId.has(node.id)) {
+      throw new Error("ID topik kosong, terlalu panjang, atau duplikat.");
+    }
     assertPosition(node.position);
-    if (typeof node.data.label !== "string") throw new Error(`Label topik ${node.id} tidak valid.`);
+    if (!node.data || typeof node.data !== "object"
+      || typeof node.data.label !== "string" || node.data.label.length > MAP_LIMITS.labelLength) {
+      throw new Error(`Label topik ${node.id} tidak valid.`);
+    }
+    if (node.data.notes !== undefined
+      && (typeof node.data.notes !== "string" || node.data.notes.length > MAP_LIMITS.notesLength)) {
+      throw new Error(`Catatan topik ${node.id} tidak valid.`);
+    }
     byId.set(node.id, node);
   }
   const root = byId.get("root");
@@ -70,7 +87,12 @@ export function assertCanonicalGraph(graph: CanonicalGraph): CanonicalGraph {
   const pairs = new Set<string>();
   for (const edge of graph.edges) {
     if (edge.type !== "cross_link") throw new Error("Edge graph hanya boleh berupa cross_link.");
-    if (!edge.id || edgeIds.has(edge.id)) throw new Error("ID cross-link kosong atau duplikat.");
+    if (typeof edge.id !== "string" || !edge.id.trim() || edge.id.length > MAP_LIMITS.idLength || edgeIds.has(edge.id)) {
+      throw new Error("ID cross-link kosong, terlalu panjang, atau duplikat.");
+    }
+    if (edge.label !== undefined && (typeof edge.label !== "string" || edge.label.length > 500)) {
+      throw new Error("Label cross-link tidak valid.");
+    }
     if (edge.source === edge.target || !byId.has(edge.source) || !byId.has(edge.target)) {
       throw new Error("Cross-link harus menghubungkan dua topik berbeda yang tersedia.");
     }
