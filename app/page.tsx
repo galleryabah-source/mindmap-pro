@@ -69,13 +69,15 @@ export default function HomePage() {
   const [history, setHistory] = useState<SavedMap[]>([]);
   const [future, setFuture] = useState<SavedMap[]>([]);
   const [ready, setReady] = useState(false);
+  const [restoreSafe, setRestoreSafe] = useState(false);
   const [notice, setNotice] = useState("");
   const importInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const handle = window.setTimeout(() => {
+      let raw: string | null = null;
       try {
-        const raw = window.localStorage.getItem(STORAGE_KEY) ?? window.localStorage.getItem(LEGACY_STORAGE_KEY);
+        raw = window.localStorage.getItem(STORAGE_KEY) ?? window.localStorage.getItem(LEGACY_STORAGE_KEY);
         if (raw) {
           const parsed: unknown = JSON.parse(raw);
           const restored = parseStoredMapDocument(parsed);
@@ -86,8 +88,21 @@ export default function HomePage() {
             setNotice("Draft lama berhasil dimigrasikan ke format dokumen kanonis.");
           }
         }
+        setRestoreSafe(true);
       } catch {
-        // A malformed local draft must not prevent the editor from opening.
+        let recovered = false;
+        if (raw) {
+          try {
+            window.localStorage.setItem("mindmap-pro:local-draft:recovery", raw);
+            recovered = true;
+          } catch {
+            // Preserve the original key; do not overwrite when recovery storage is unavailable.
+          }
+        }
+        setSaveState("error");
+        setNotice(recovered
+          ? "Draft tidak valid. Salinan recovery dibuat dan draft asli dipertahankan; autosave dihentikan."
+          : "Draft tidak dapat dibaca. Draft asli dipertahankan; autosave dihentikan.");
       } finally {
         setReady(true);
       }
@@ -96,7 +111,7 @@ export default function HomePage() {
   }, [setEdges, setNodes]);
 
   useEffect(() => {
-    if (!ready) return;
+    if (!ready || !restoreSafe) return;
     const handle = window.setTimeout(() => {
       try {
         const payload = serializeMapDocument(title, nodes, edges);
@@ -109,7 +124,7 @@ export default function HomePage() {
       }
     }, 350);
     return () => window.clearTimeout(handle);
-  }, [nodes, edges, title, ready]);
+  }, [nodes, edges, title, ready, restoreSafe]);
 
   const selectedNode = useMemo(
     () => nodes.find((node) => node.id === selectedId) ?? null,
