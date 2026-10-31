@@ -95,6 +95,24 @@ describe("canonical graph commands", () => {
     })).toThrow(/Catatan/i);
   });
 
+  it("rejects unsafe or excessively nested canonical metadata", () => {
+    const invalid = graph();
+    invalid.nodes[1].data.extra = { nested: { callback: () => "unsafe" } };
+    expect(() => assertCanonicalGraph(invalid)).toThrow(/Metadata/);
+  });
+
+  it("rejects malformed cross-link endpoints", () => {
+    const invalid = graph();
+    invalid.edges[0].source = "" as unknown as string;
+    expect(() => assertCanonicalGraph(invalid)).toThrow(/Endpoint/);
+  });
+
+  it("rejects unsafe cross-link style metadata", () => {
+    const invalid = graph();
+    invalid.edges[0].style = { custom: () => "unsafe" };
+    expect(() => assertCanonicalGraph(invalid)).toThrow(/Cross-link/);
+  });
+
   it("rejects root deletion", () => {
     expect(() => deleteTopicSubtree(graph(), "root")).toThrow(/utama/);
   });
