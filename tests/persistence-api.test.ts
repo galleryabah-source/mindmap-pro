@@ -3,10 +3,12 @@ import {
   isJsonContentType,
   isUuid,
   isValidWriteResponse,
+  MAX_PERSISTENCE_BODY_BYTES,
   mapSupabaseError,
   parseCommitMapGraphInput,
   parseCreateMapInput,
   parseJsonBody,
+  readJsonRequest,
   parsePersistedDocument,
 } from "@/lib/server/persistence-api";
 
@@ -73,6 +75,29 @@ describe("persistence API contract", () => {
   it("rejects JSON parse failures and bodies larger than 10 MB", () => {
     expect(parseJsonBody("{").ok).toBe(false);
     expect(parseJsonBody("x".repeat(10 * 1024 * 1024 + 1))).toMatchObject({ ok: false, problem: { status: 413 } });
+  });
+
+  it("rejects declared oversized request bodies before reading them", async () => {
+    const request = new Request("https://mindmap.invalid/api/maps", {
+      method: "POST",
+      headers: { "content-length": String(MAX_PERSISTENCE_BODY_BYTES + 1) },
+      body: "{}",
+    });
+    await expect(readJsonRequest(request)).resolves.toMatchObject({
+      ok: false,
+      problem: { status: 413, code: "PAYLOAD_TOO_LARGE" },
+    });
+  });
+
+  it("enforces the body limit while streaming requests without a declared length", async () => {
+    const request = new Request("https://mindmap.invalid/api/maps", {
+      method: "POST",
+      body: "x".repeat(MAX_PERSISTENCE_BODY_BYTES + 1),
+    });
+    await expect(readJsonRequest(request)).resolves.toMatchObject({
+      ok: false,
+      problem: { status: 413, code: "PAYLOAD_TOO_LARGE" },
+    });
   });
 
   it("maps known database errors to stable HTTP semantics", () => {
