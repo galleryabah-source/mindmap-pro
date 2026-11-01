@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { isJsonContentType, isValidWriteResponse, isUuid, mapSupabaseError, parseCommitMapGraphInput, parseJsonBody } from "@/lib/server/persistence-api";
+import { isJsonContentType, isValidWriteResponse, isUuid, mapSupabaseError, parseCommitMapGraphInput, readJsonRequest } from "@/lib/server/persistence-api";
 
 export const runtime = "nodejs";
 
@@ -18,7 +18,7 @@ export async function PUT(request: Request, context: RouteContext) {
       return problem(415, "UNSUPPORTED_MEDIA_TYPE", "Gunakan Content-Type application/json.");
     }
 
-    const parsed = parseJsonBody(await request.text());
+    const parsed = await readJsonRequest(request);
     if (!parsed.ok) return problem(parsed.problem.status, parsed.problem.code, parsed.problem.message);
     const input = parseCommitMapGraphInput(parsed.value);
     if (!input) return problem(422, "INVALID_GRAPH_INPUT", "Data commit atau dokumen canonical tidak valid.");
