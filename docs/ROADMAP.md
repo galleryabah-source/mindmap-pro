@@ -151,3 +151,10 @@ The approved detailed specification is [UI/UX and Front-End Architecture](UI_UX_
 - **UI-07 — UX Quality Gate:** accessibility, performance, responsive, visual regression, E2E and operational-state review. Exit: measured evidence, not visual sign-off alone.
 
 **Implementation priority:** UI-01 → UI-02 → UI-03. Define entitlement/billing contracts early, but do not collect real payments until backend verification, webhook idempotency, legal/provider review and support operations are complete.
+
+**UI-02 execution status (1 November 2026):**
+- UI-02A/B — PR #40: shell and truthful dashboard foundation. Exact-head CI previously passed; browser UAT remains outstanding.
+- UI-02C — PR #41: authenticated workspace list/create and sign-in callback. Exact-head CI and target Supabase configuration remain pending verification.
+- UI-02D — PR #42: server-verified account identity, sign-in entry, sign-out and responsive account menu. Exact-head CI and browser UAT remain required.
+- These are stacked pull requests; merge in dependency order only after each exact-head quality gate passes. Do not deploy or activate account flows until Supabase Auth redirect configuration, database migration and RLS/RPC behavior are verified in the target environment.
+
