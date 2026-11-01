@@ -56,3 +56,4 @@ npm run build
 - [Map document validator](lib/domain/map-document.ts)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Canonical engine contract](docs/CANONICAL_ENGINE_CONTRACT.md)
+- [UI/UX and Front-End Architecture — Lightweight Premium Workspace](docs/UI_UX_FRONTEND_ARCHITECTURE.md)
