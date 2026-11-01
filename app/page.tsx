@@ -42,6 +42,7 @@ import {
   Redo2,
   X,
 } from "lucide-react";
+import { AuthEntry } from "@/components/auth-entry";
 import { initialEdges, initialNodes } from "@/lib/demo-map";
 import { parseStoredMapDocument, serializeMapDocument } from "@/lib/domain/document-lifecycle";
 import { addChildTopic, addCrossLink, deleteCrossLinks, deleteTopicSubtree, moveTopic, reparentTopic, updateTopicContent } from "@/lib/domain/graph-commands";
@@ -470,6 +471,7 @@ export default function HomePage() {
         <header className="topbar">
           <div className="breadcrumb"><span>Workspace</span><ArrowRight size={13} /><strong>{title}</strong><button className="icon-button tiny"><ChevronDown size={14} /></button></div>
           <div className="topbar-actions">
+            <AuthEntry />
             <div className={saveState === "saved" ? "save-indicator is-saved" : "save-indicator"}><span className="save-dot" />{saveState === "saved" ? "Tersimpan lokal" : saveState === "error" ? "Gagal menyimpan" : "Menyimpan…"}</div>
             <button className="icon-button" aria-label="Undo" onClick={undo} disabled={!history.past.length}><Undo2 size={17} /></button>
             <button className="icon-button" aria-label="Redo" onClick={redo} disabled={!history.future.length}><Redo2 size={17} /></button>
