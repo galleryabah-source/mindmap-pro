@@ -121,6 +121,7 @@ select throws_ok(
     'Atomic graph RPC test'
   )$$,
   '23505',
+  'Idempotency key was already used with a different payload',
   'reusing a create request ID with a different payload is rejected'
 );
 
@@ -160,6 +161,7 @@ select throws_ok(
     'Stale write'
   )$$,
   '40001',
+  'Map revision conflict',
   'stale expected revision is rejected'
 );
 
@@ -174,6 +176,7 @@ select throws_ok(
     'Viewer write'
   )$$,
   '42501',
+  'Workspace is not accessible for graph mutation',
   'viewer cannot commit a graph revision'
 );
 
@@ -188,6 +191,7 @@ select throws_ok(
     'Missing root'
   )$$,
   '22023',
+  'Canonical graph must contain exactly one root topic',
   'graph without root is rejected'
 );
 
@@ -204,6 +208,7 @@ select throws_ok(
     'Cycle'
   )$$,
   '22023',
+  'Every topic must have one valid parent chain ending at root',
   'disconnected cyclic hierarchy is rejected'
 );
 
@@ -219,6 +224,7 @@ select throws_ok(
     'Duplicate cross-link'
   )$$,
   '22023',
+  'Duplicate undirected cross-links are not allowed',
   'duplicate undirected cross-links are rejected'
 );
 
