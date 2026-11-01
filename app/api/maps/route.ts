@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { isJsonContentType, isUuid, isValidWriteResponse, mapSupabaseError, parseCreateMapInput, parseJsonBody } from "@/lib/server/persistence-api";
+import { isJsonContentType, isUuid, isValidWriteResponse, mapSupabaseError, parseCreateMapInput, readJsonRequest } from "@/lib/server/persistence-api";
 
 export const runtime = "nodejs";
 
@@ -45,7 +45,7 @@ export async function POST(request: Request) {
     if (!isJsonContentType(request.headers.get("content-type"))) {
       return problem(415, "UNSUPPORTED_MEDIA_TYPE", "Gunakan Content-Type application/json.");
     }
-    const parsed = parseJsonBody(await request.text());
+    const parsed = await readJsonRequest(request);
     if (!parsed.ok) return problem(parsed.problem.status, parsed.problem.code, parsed.problem.message);
     const input = parseCreateMapInput(parsed.value);
     if (!input) return problem(422, "INVALID_MAP_INPUT", "Data pembuatan map atau dokumen canonical tidak valid.");
