@@ -1,6 +1,6 @@
 # UI-02 — Application Shell Implementation Plan
 
-Status: **Implementation in progress — UI-02A/B delivered in PR #40; UI-02C delivered in PR #41; UI-02D account/navigation polish in PR #42.** CI and browser UAT remain release gates. This plan builds on the existing editor instead of replacing it.
+Status: **Implementation in progress — UI-02A/B delivered in PR #40; UI-02C delivered in PR #41; UI-02D account/navigation polish in PR #42.** Exact-head CI has passed for the recorded heads; browser UAT and target Supabase verification remain release gates. The [UI-02 Browser UAT Checklist](UI_02_BROWSER_UAT_CHECKLIST.md) defines the execution matrix. This plan builds on the existing editor instead of replacing it.
 
 ## 1. Objective
 
