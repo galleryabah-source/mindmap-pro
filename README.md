@@ -47,6 +47,7 @@ npm run build
 
 ## Product documentation
 
+- [PDF-to-MindMap Intelligence Engine blueprint](docs/PDF_TO_MINDMAP_INTELLIGENCE_BLUEPRINT.md)
 - [Brainstorm backlog](docs/BRAINSTORM_BACKLOG.md)
 - [Premium UX and template system](docs/PRODUCT_STRATEGY_AND_DESIGN_SYSTEM.md)
 - [Multi-platform delivery strategy](docs/MULTI_PLATFORM_DELIVERY.md)
