@@ -11,6 +11,7 @@ Migration `supabase/migrations/202610260001_initial_workspace_map_schema.sql` de
 - A partial unique index prevents more than one root topic per map; an undirected unique index rejects reversed duplicate cross-links
 - Immutable-identity triggers prevent changing map IDs/workspace ownership, topic IDs/map scope, and cross-link IDs/map scope through ordinary UPDATE statements; explicit audited transfer workflows are required for any future ownership transfer.
 - immutable-by-policy `map_revisions`
+- additive migration `202611010001_workspace_identity_guard.sql` prevents updates to workspace `id`, `created_by`, and `created_at` while leaving workspace name/slug and lifecycle fields available to authorized owners/admins
 - restricted-read `audit_events`
 - workspace membership/role helpers and authenticated `create_workspace` RPC
 - RLS policies, query indexes and a cycle-prevention trigger that serializes parent changes per map
@@ -31,6 +32,7 @@ The code uses `@supabase/ssr` browser/server clients and a Next.js 16 `proxy.ts`
 - Audit events have no direct client write policy. Audited write RPCs/triggers are still required for map/topic/edge mutations before production.
 - The topic parent foreign key prevents cross-map parenting, and a per-map lock plus recursive trigger rejects parent cycles. This requires concurrent database tests before production.
 - RLS policies and SECURITY DEFINER functions require validation against a dedicated project with authenticated test users before production use.
+- Workspace identity fields (`id`, `created_by`, `created_at`) are immutable at the database layer; mutable workspace metadata remains subject to owner/admin RLS authorization.
 - Never put service-role keys or database credentials in `NEXT_PUBLIC_*` variables.
 - Do not run this migration against unrelated existing projects such as `MTA DETENI` or `galleryabah`.
 
