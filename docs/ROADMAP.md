@@ -136,3 +136,18 @@ Start after shared API/domain contracts stabilize; can overlap with Android pack
 ## Critical path
 
 Repository/CI → identity and tenant model → graph invariants → editor/persistence → history and import/export → premium UX/templates → secure document/AI pipeline → collaboration/presentation → production hardening → shared cross-platform packages/API contracts → Android alpha → Windows desktop alpha → coordinated multi-platform release.
+
+
+## UI/UX delivery track — Lightweight Premium Workspace
+
+The approved detailed specification is [UI/UX and Front-End Architecture](UI_UX_FRONTEND_ARCHITECTURE.md). This track adds the design and front-end delivery gates without changing the canonical graph or persistence roadmap.
+
+- **UI-01 — Design System Foundation:** semantic design tokens, light/dark themes, typography, spacing, focus/motion tokens and accessible shared components. Exit: component/contrast/visual baselines.
+- **UI-02 — Application Shell:** responsive navigation, header, route boundaries, dashboard, account entry and capability-aware menus. Exit: route, responsive, accessibility and visual regression tests.
+- **UI-03 — Mind Map Editor UX:** canvas-centered editor shell, toolbar, outline, inspector, responsive panels and explicit save/revision states. All mutations continue through the canonical graph command boundary. Exit: canonical integration, keyboard/touch and save-state tests.
+- **UI-04 — Knowledge Surfaces:** document library, document-to-map review, AI assistant, knowledge and learning surfaces. Exit: provenance, review, permission, quota and module tests.
+- **UI-05 — Premium UX:** pricing/plan presentation, usage and credits, upgrade/downgrade, billing history and payment states. Exit: server-enforced entitlement and billing integration tests; real payment activation remains separately gated.
+- **UI-06 — Collaboration UX:** teams, shared workspace, invitations, roles, comments and activity. Exit: authorization, invitation/revocation and concurrency tests.
+- **UI-07 — UX Quality Gate:** accessibility, performance, responsive, visual regression, E2E and operational-state review. Exit: measured evidence, not visual sign-off alone.
+
+**Implementation priority:** UI-01 → UI-02 → UI-03. Define entitlement/billing contracts early, but do not collect real payments until backend verification, webhook idempotency, legal/provider review and support operations are complete.
