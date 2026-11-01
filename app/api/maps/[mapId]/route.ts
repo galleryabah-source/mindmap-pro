@@ -36,8 +36,7 @@ export async function GET(_request: Request, context: RouteContext) {
       .from("map_revisions")
       .select("revision, snapshot, note, created_at")
       .eq("map_id", mapId)
-      .order("revision", { ascending: false })
-      .limit(1)
+      .eq("revision", map.revision)
       .maybeSingle();
 
     if (revisionError) {
