@@ -55,3 +55,4 @@ npm run build
 - [Database migration](supabase/migrations/202610260001_initial_workspace_map_schema.sql)
 - [Map document validator](lib/domain/map-document.ts)
 - [Architecture](docs/ARCHITECTURE.md)
+- [Canonical engine contract](docs/CANONICAL_ENGINE_CONTRACT.md)

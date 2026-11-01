@@ -42,7 +42,7 @@ function isBoundedString(value: unknown, max: number, allowEmpty = true): value 
   return typeof value === "string" && value.length <= max && (allowEmpty || value.trim().length > 0);
 }
 
-function isSafeJsonValue(value: unknown, depth = 0): boolean {
+export function isSafeJsonValue(value: unknown, depth = 0): boolean {
   if (depth > 12) return false;
   if (value === null || typeof value === "string" || typeof value === "boolean") return true;
   if (typeof value === "number") return Number.isFinite(value);
