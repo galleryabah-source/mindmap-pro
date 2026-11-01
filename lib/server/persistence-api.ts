@@ -32,7 +32,11 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-export function isJsonContentType(value: string | null): boolean {\n  return value?.split(";")[0]?.trim().toLowerCase() === "application/json";\n}\n\nexport function isUuid(value: unknown): value is string {
+export function isJsonContentType(value: string | null): boolean {
+  return value?.split(";")[0]?.trim().toLowerCase() === "application/json";
+}
+
+export function isUuid(value: unknown): value is string {
   return typeof value === "string"
     && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
