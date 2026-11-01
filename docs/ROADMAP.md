@@ -140,7 +140,7 @@ Repository/CI → identity and tenant model → graph invariants → editor/pers
 
 ## UI/UX delivery track — Lightweight Premium Workspace
 
-The approved detailed specification is [UI/UX and Front-End Architecture](UI_UX_FRONTEND_ARCHITECTURE.md). This track adds the design and front-end delivery gates without changing the canonical graph or persistence roadmap. The implementation contract for UI-02 is [UI-02 Application Shell Plan](UI_02_APPLICATION_SHELL_PLAN.md).
+The approved detailed specification is [UI/UX and Front-End Architecture](UI_UX_FRONTEND_ARCHITECTURE.md). This track adds the design and front-end delivery gates without changing the canonical graph or persistence roadmap. The implementation contract for UI-02 is [UI-02 Application Shell Plan](UI_02_APPLICATION_SHELL_PLAN.md). The editor-specific implementation contract for UI-03 is [UI-03 Editor UX Plan](UI_03_EDITOR_UX_PLAN.md). UI-03 implementation starts only after UI-02 exact-head CI and browser UAT gates pass.
 
 - **UI-01 — Design System Foundation:** semantic design tokens, light/dark themes, typography, spacing, focus/motion tokens and accessible shared components. Exit: component/contrast/visual baselines.
 - **UI-02 — Application Shell:** responsive navigation, header, route boundaries, dashboard, account entry and capability-aware menus. Exit: route, responsive, accessibility and visual regression tests.
