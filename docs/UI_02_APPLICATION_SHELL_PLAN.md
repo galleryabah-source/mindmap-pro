@@ -1,6 +1,6 @@
 # UI-02 — Application Shell Implementation Plan
 
-Status: **Implementation contract / not yet implemented.** This plan decomposes UI-02 into reviewable increments. It deliberately builds on the existing editor instead of replacing it.
+Status: **Implementation in progress — UI-02A/B delivered in PR #40; UI-02C delivered in PR #41; UI-02D account/navigation polish in PR #42.** CI and browser UAT remain release gates. This plan builds on the existing editor instead of replacing it.
 
 ## 1. Objective
 
@@ -18,10 +18,11 @@ Deliver a coherent application shell with responsive navigation, contextual head
 
 Introduce shared shell components in the existing `app/` structure without a repository-wide directory migration:
 
-- `app/components/layout/workspace-shell.tsx` — shell composition and responsive frame.
+- `app/components/layout/workspace-shell.tsx` — shell composition, responsive frame and verified account identity.
 - `app/components/layout/workspace-sidebar.tsx` — primary navigation and active route state.
 - `app/components/layout/workspace-header.tsx` — page title/breadcrumb, search affordance, create action and account entry.
-- `app/components/layout/mobile-navigation.tsx` — accessible mobile drawer or bottom navigation.
+- `app/components/layout/account-menu.tsx` — verified session identity, sign-in entry and sign-out action.
+- `app/components/layout/mobile-navigation.tsx` — accessible mobile drawer or bottom navigation; current first increment uses semantic mobile navigation links.
 - `app/dashboard/page.tsx` — dashboard route, composed from reusable dashboard sections.
 - `app/dashboard/loading.tsx` and `app/dashboard/error.tsx` — route-level loading and recoverable error states where data fetching requires them.
 
@@ -69,7 +70,7 @@ Dashboard content must be sourced from real capabilities and explicit states:
 | UI-02A | Shared shell primitives and route landmarks | lint, typecheck, component tests, keyboard/focus checks |
 | UI-02B | Dashboard empty/loading/signed-out states | route tests, no fabricated data, responsive screenshots |
 | UI-02C | Authenticated workspace summary integration | API contract tests, membership/forbidden tests, no client-trusted authorization |
-| UI-02D | Navigation and account entry polish | route tests, mobile/desktop visual regression, accessibility review |
+| UI-02D | Navigation and account entry polish (PR #42) | exact-head CI, route tests, mobile/desktop visual regression, keyboard/focus and sign-out review |
 
 Slices may be separate pull requests. Do not combine all route migration and dashboard data integration into one large change.
 
@@ -84,7 +85,14 @@ Slices may be separate pull requests. Do not combine all route migration and das
 - Light/dark themes use semantic tokens; reduced-motion preference is respected.
 - Lint, typecheck, unit tests, production build and route-level E2E checks pass on the exact PR head.
 
-## 10. Explicitly out of scope
+## 10. Current delivery evidence
+
+- **PR #40:** shared shell, dashboard route, truthful local-draft boundary and route loading/error handling. PR #40 exact-head CI previously reported success.
+- **PR #41:** authenticated workspace summary, server-verified session, RLS-backed workspace read and atomic workspace creation through the existing RPC. PR #41 exact-head CI is still pending/in progress; do not merge or deploy until it completes successfully.
+- **PR #42:** account menu reads identity from a server-verified Supabase session; signed-out users receive a sign-in route; sign-out is performed through Supabase Auth. This PR is stacked on PR #41 and still requires exact-head CI and browser UAT.
+- No map list, cloud sync, plan/usage, notifications or collaboration presence is presented without its own authorized data contract.
+
+## 11. Explicitly out of scope
 
 - Replacing React Flow or the canonical graph engine.
 - Rewriting `app/page.tsx` or migrating the entire repository to a new `src/` layout.

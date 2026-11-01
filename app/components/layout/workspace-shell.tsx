@@ -1,6 +1,8 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { ArrowUpRight, LayoutDashboard, Network, Plus } from "lucide-react";
+import { createClient } from "@/lib/supabase/server";
+import { AccountMenu } from "./account-menu";
 import styles from "./workspace-shell.module.css";
 
 type WorkspaceSection = "dashboard" | "editor";
@@ -17,12 +19,22 @@ const navigation = [
   { id: "editor" as const, label: "Mind Map Editor", href: "/", Icon: Network },
 ];
 
-export function WorkspaceShell({
+export async function WorkspaceShell({
   children,
   activeSection,
   title,
   description,
 }: WorkspaceShellProps) {
+  let accountEmail: string | null = null;
+
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.auth.getUser();
+    if (!error && data.user) accountEmail = data.user.email ?? null;
+  } catch {
+    // The shell remains usable in local-only mode when auth is not configured.
+  }
+
   return (
     <div className={styles.shell}>
       <a className={styles.skipLink} href="#workspace-main">Lewati ke konten utama</a>
@@ -53,7 +65,7 @@ export function WorkspaceShell({
 
         <div className={styles.sidebarFooter}>
           <span className={styles.localIndicator} aria-hidden="true" />
-          <span>Editor dengan draft browser</span>
+          <span>Draft browser tetap terpisah dari cloud</span>
         </div>
       </aside>
 
@@ -64,11 +76,14 @@ export function WorkspaceShell({
             <h1>{title}</h1>
             {description ? <p>{description}</p> : null}
           </div>
-          <Link className={styles.createButton} href="/" aria-label="Buka editor untuk membuat mind map">
-            <Plus size={17} aria-hidden="true" />
-            <span>Buat Mind Map</span>
-            <ArrowUpRight size={15} aria-hidden="true" />
-          </Link>
+          <div className={styles.headerActions}>
+            <Link className={styles.createButton} href="/" aria-label="Buka editor untuk membuat mind map">
+              <Plus size={17} aria-hidden="true" />
+              <span>Buat Mind Map</span>
+              <ArrowUpRight size={15} aria-hidden="true" />
+            </Link>
+            <AccountMenu email={accountEmail} />
+          </div>
         </header>
 
         <nav className={styles.mobileNavigation} aria-label="Navigasi mobile">
