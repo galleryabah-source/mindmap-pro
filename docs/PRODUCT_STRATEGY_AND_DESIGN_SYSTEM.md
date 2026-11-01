@@ -86,3 +86,30 @@ Launch with a small, carefully reviewed starter set; expand through quality-revi
 
 ## Definition of done
 Each feature includes: user story and acceptance criteria; domain rules; server-side authorization; migration/data ownership where applicable; responsive and accessible states; loading/error/offline behavior; unit/integration/E2E tests; telemetry; documentation; and rollback/recovery considerations.
+
+
+## Approved UI/UX direction — Lightweight Premium Workspace
+
+The detailed approved specification is [UI/UX and Front-End Architecture](UI_UX_FRONTEND_ARCHITECTURE.md). The design direction is a calm, elegant, responsive workspace with a restrained indigo/violet accent system, light/dark themes, consistent design tokens, collapsible navigation and a canvas-first editor. Progressive disclosure keeps advanced tools discoverable without crowding the primary workflow.
+
+### Experience structure
+- Workspace dashboard with create actions, recent maps, activity, search and curated templates.
+- Capability-aware sidebar covering Workspace, Create, Knowledge, Learning, Collaboration, AI Assistant and Settings.
+- Editor composed of a compact top toolbar, optional outline/navigation panel, central canvas, contextual inspector and clear save/revision status.
+- Mobile and tablet use drawers/sheets and touch-first contextual controls rather than a compressed desktop layout.
+- Shared component primitives and design tokens are the only approved route for consistent UI styling; feature modules own their own business behavior and routes.
+
+### Front-end architecture rules
+- Preserve the canonical graph engine as the source of truth; the graph renderer remains an adapter.
+- Keep graph data separate from layout, viewport and ephemeral UI state.
+- Use modular feature boundaries, typed contracts, capability-aware navigation, route-level code splitting and lazy loading for heavy modules.
+- Use server-rendered surfaces where suitable and isolate client interactivity around editor boundaries.
+- Optimize with profiling and representative benchmarks; do not adopt a heavier renderer or broad refactor without evidence.
+
+### Premium and commercial UX direction
+Free, Pro, Team and Business/Enterprise are proposed packaging tiers. Pro and Team price examples in the specification are market-test hypotheses only, not approved public prices. Potential revenue streams include subscription, transparent AI credits, a quality-reviewed template marketplace, team/member billing and enterprise licensing. Keep all plans in one application and one canonical data model; vary server-enforced entitlements and quotas, not the underlying graph engine.
+
+A downgrade or expired subscription must not delete user-created maps/documents. Preserve access to existing data and explain action/limit changes. Never grant paid access based only on a frontend redirect or client-side plan flag.
+
+### Approval boundary
+This approval establishes product UX direction and documentation. It does not authorize payment collection, select a payment provider, finalize prices/quotas/revenue shares, or assert implementation completion. Billing must have verified server-side entitlements, signed and idempotent webhooks, auditable state transitions and support/refund handling before activation.

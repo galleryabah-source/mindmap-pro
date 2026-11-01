@@ -105,3 +105,16 @@ Template package contract: stable ID, schema version, title, description, catego
 - No AI result silently overwrites user content.
 - No feature may bypass canonical graph invariants, authorization or migration discipline.
 - Reprioritize based on usability tests, telemetry, risk and measured performance—not feature count alone.
+
+
+## Approved Lightweight Premium UI/UX direction
+The detailed specification is [UI/UX and Front-End Architecture](UI_UX_FRONTEND_ARCHITECTURE.md). Approved direction: calm premium visual language; semantic design tokens; light/dark themes; responsive collapsible navigation; dashboard and canvas-centered editor; shared component system; modular feature boundaries; accessible keyboard/outline alternatives; lazy-loaded heavy modules; and a consistent premium experience across Free, Pro, Team and Enterprise packaging.
+
+### New delivery backlog
+- **P0:** design tokens/themes/shared components; responsive application shell; dashboard; editor shell aligned with canonical graph engine.
+- **P1:** document/AI/knowledge/learning surfaces, capability-aware navigation and polished empty/loading/error/quota states.
+- **P2:** pricing, usage/credits, upgrade/downgrade and billing history UX after entitlement contracts are available.
+- **P3:** team/collaboration UX and marketplace discovery after authorization, billing and moderation contracts are validated.
+- **P4:** measured performance, accessibility, visual regression and production UX hardening.
+
+Commercial prices and marketplace economics remain hypotheses pending validation. No payment provider or real payment collection is approved by this UX decision.

@@ -107,3 +107,17 @@ This is the initial deployment baseline, with provider-specific access kept behi
 
 ## Extensibility contract
 Every optional subsystem must be replaceable behind a narrow interface and covered by contract tests. Add new capabilities as modules with migrations, permission rules, telemetry, documentation and tests. Use feature flags for staged rollout where appropriate. Avoid microservices until measured scale, isolation or team ownership justifies the operational cost.
+
+
+## Front-end experience and monetization boundaries
+
+The approved presentation direction is documented in [UI/UX and Front-End Architecture](UI_UX_FRONTEND_ARCHITECTURE.md). The application shell, dashboard, editor, document/AI, knowledge, learning, collaboration and monetization surfaces are feature modules over shared design-system primitives.
+
+- The UI layer may display capabilities and usage, but server-side authorization and entitlement services are authoritative for every protected operation.
+- Keep subscription catalog, entitlements, usage metering, billing adapter, webhook intake and billing audit/ledger as explicit application/infrastructure boundaries. Do not put payment-provider logic in React components or the canonical graph engine.
+- Payment webhooks require signature verification, idempotent processing, replay protection and auditable transitions. Browser redirects never grant paid access.
+- The graph engine and canonical persistence remain independent of plan tiers. Free/paid differences are enforced as capabilities/quotas at application/API boundaries.
+- Subscription downgrade/expiry must not delete user content; preserve data access and apply documented limits to new actions.
+- AI usage requires server-authoritative metering, bounded quotas, clear unit semantics and auditable consumption; client credit displays are projections only.
+- Use route-level code splitting and lazy loading. Do not load billing, AI, collaboration or document-processing bundles on routes that do not need them.
+- Renderer selection, Web Workers, virtualization and graph optimization remain evidence-driven and adapter-based.
