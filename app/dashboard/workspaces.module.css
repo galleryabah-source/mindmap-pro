@@ -85,3 +85,32 @@
 @media (max-width: 640px) {
   .workspaceGrid { grid-template-columns: 1fr; }
 }
+
+.loadingCard {
+  min-height: 132px;
+  border: 1px solid var(--mm-color-border);
+  border-radius: var(--mm-radius-lg);
+  background: linear-gradient(100deg, var(--mm-color-surface-muted), var(--mm-color-surface), var(--mm-color-surface-muted));
+  background-size: 200% 100%;
+  animation: workspace-loading 1.5s ease-in-out infinite;
+}
+.actionButton {
+  min-height: 42px;
+  margin-top: 1rem;
+  padding: 0 0.9rem;
+  border: 0;
+  border-radius: var(--mm-radius-md);
+  background: var(--mm-color-primary);
+  color: white;
+  font-size: 0.8rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+.actionButton:focus-visible { outline: none; box-shadow: var(--mm-focus-ring); }
+@keyframes workspace-loading {
+  from { background-position: 100% 0; }
+  to { background-position: -100% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .loadingCard { animation: none; }
+}
