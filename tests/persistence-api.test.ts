@@ -6,6 +6,7 @@ import {
   MAX_PERSISTENCE_BODY_BYTES,
   mapSupabaseError,
   parseCommitMapGraphInput,
+  parseCreateWorkspaceInput,
   parseCreateMapInput,
   parseJsonBody,
   readJsonRequest,
@@ -32,6 +33,20 @@ const mapId = "00000000-0000-4000-8000-000000000003";
 const snapshotId = "00000000-0000-4000-8000-000000000004";
 
 describe("persistence API contract", () => {
+  it("normalizes valid workspace names and slugs", () => {
+    expect(parseCreateWorkspaceInput({ name: "  Team Workspace  ", slug: " Team-Workspace " })).toEqual({
+      name: "Team Workspace",
+      slug: "team-workspace",
+    });
+  });
+
+  it("rejects invalid workspace names and slugs", () => {
+    expect(parseCreateWorkspaceInput({ name: " ", slug: "team" })).toBeNull();
+    expect(parseCreateWorkspaceInput({ name: "x".repeat(121), slug: "team" })).toBeNull();
+    expect(parseCreateWorkspaceInput({ name: "Team", slug: "two words" })).toBeNull();
+    expect(parseCreateWorkspaceInput({ name: "Team", slug: "-team-" })).toBeNull();
+  });
+
   it("accepts JSON content types with optional charset parameters", () => {
     expect(isJsonContentType("application/json")).toBe(true);
     expect(isJsonContentType("application/json; charset=utf-8")).toBe(true);
