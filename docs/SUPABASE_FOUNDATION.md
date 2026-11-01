@@ -15,6 +15,10 @@ Migration `supabase/migrations/202610260001_initial_workspace_map_schema.sql` de
 - workspace membership/role helpers and authenticated `create_workspace` RPC
 - RLS policies, query indexes and a cycle-prevention trigger that serializes parent changes per map
 
+## Canonical write contract
+
+Future map creation and graph commits must follow [Canonical Persistence Write Contract](CANONICAL_PERSISTENCE_WRITE_CONTRACT.md). It defines server-derived identity, workspace authorization, atomic graph/revision/audit writes, optimistic concurrency, idempotent retries and failure semantics. It is a design contract only; no graph write RPC or cloud persistence is implemented yet.
+
 ## Local configuration
 Copy `.env.example` to `.env.local`, then fill in only the URL and publishable key from the dedicated MindMap Pro project:
 - `NEXT_PUBLIC_SUPABASE_URL`
@@ -36,7 +40,7 @@ The code uses `@supabase/ssr` browser/server clients and a Next.js 16 `proxy.ts`
 - Do not run this migration against unrelated existing projects such as `MTA DETENI` or `galleryabah`.
 
 ## Validation
-A pgTAP suite lives at `supabase/tests/001_schema_security.test.sql`. It checks required tables, RLS enablement, security helpers, immutable identities, SECURITY DEFINER RPC execution grants, and the fail-closed direct-write boundary across workspace/map/topic/edge/revision/audit tables. The current suite contains 57 assertions. The suite and migration have not yet been run against a dedicated database.
+A pgTAP suite lives at `supabase/tests/001_schema_security.test.sql`. It checks required tables, RLS enablement, security helpers, immutable identities, SECURITY DEFINER RPC execution grants, and the fail-closed direct-write boundary across workspace/map/topic/edge/revision/audit tables. The current suite contains 57 assertions. CI runs migrations and pgTAP against a disposable local Supabase database; the CI run for commit `f5b0cfd1052336373d961c5310d1eba2af9825fb` passed all 57 assertions, including the anonymous EXECUTE denial checks. No hosted Supabase project is linked or modified.
 
 ## Apply checklist
 1. Create/identify a dedicated Supabase project named MindMap Pro and verify its project ref and expected cost.
