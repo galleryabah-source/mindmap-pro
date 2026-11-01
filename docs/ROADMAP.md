@@ -2,7 +2,7 @@
 
 This roadmap converts the product brainstorm into a sequenced, testable delivery plan. Estimates are planning ranges, not delivery promises. Brainstorm items remain proposals until implemented and verified.
 
-See [Brainstorm Backlog](BRAINSTORM_BACKLOG.md) for the full feature inventory, UX direction, template categories, engineering guardrails and P0–P4 prioritization. See [Product Strategy and Design System](PRODUCT_STRATEGY_AND_DESIGN_SYSTEM.md) for information architecture and visual standards. See [Multi-Platform Delivery Strategy](MULTI_PLATFORM_DELIVERY.md) for Android and Windows desktop packaging, architecture and release gates.
+See [PDF-to-MindMap Intelligence Engine Blueprint](PDF_TO_MINDMAP_INTELLIGENCE_BLUEPRINT.md) for the full document-ingestion architecture, user journey, contracts, security model and acceptance criteria. See [Brainstorm Backlog](BRAINSTORM_BACKLOG.md) for the full feature inventory, UX direction, template categories, engineering guardrails and P0–P4 prioritization. See [Product Strategy and Design System](PRODUCT_STRATEGY_AND_DESIGN_SYSTEM.md) for information architecture and visual standards. See [Multi-Platform Delivery Strategy](MULTI_PLATFORM_DELIVERY.md) for Android and Windows desktop packaging, architecture and release gates.
 
 ## P0 — Phase 0: Product and technical validation (1–2 weeks)
 
@@ -31,6 +31,7 @@ See [Brainstorm Backlog](BRAINSTORM_BACKLOG.md) for the full feature inventory, 
 - Add create, edit, delete, move, reorder, nest, collapse/expand, pan/zoom and focused-branch navigation.
 - Provide keyboard-accessible outline/tree editing as an alternative to canvas interaction.
 - Implement deterministic commands, undo/redo, autosave status, revision conflict handling and recoverable drafts.
+- Complete atomic map/root creation, audited revision writes, immutable identity boundaries and tested restore semantics before enabling cloud persistence.
 - Implement JSON schema validation and import/export round-trip tests.
 - Build the initial responsive editor shell with loading, empty, error, offline and permission-denied states.
 
@@ -47,15 +48,23 @@ See [Brainstorm Backlog](BRAINSTORM_BACKLOG.md) for the full feature inventory, 
 
 **Exit gate:** core workflows meet accessibility criteria; export fixtures, template validation and visual regression checks pass.
 
-## P2 — Phase 4: Document intelligence and AI Knowledge Studio (3–6 weeks)
+## P2 — Phase 4: PDF-to-MindMap Document Intelligence (staged delivery)
 
-- Secure upload and file validation, extraction preview and OCR strategy.
-- Build source provenance, page references where available, proposed outline and accept/reject review.
-- Add branch-scoped actions: explain, expand, summarize, compare, translate and generate questions.
-- Add durable jobs, idempotency, quotas, cost telemetry, abuse controls and evaluation corpus.
-- Preserve the rule: AI proposes changes; users review and accept them.
+This is a core knowledge-ingestion capability, not a parallel editor. The detailed product and technical contract is maintained in [PDF-to-MindMap Intelligence Engine Blueprint](PDF_TO_MINDMAP_INTELLIGENCE_BLUEPRINT.md).
 
-**Exit gate:** provenance, adversarial input, quota/cost, privacy and quality evaluations pass.
+- **D0 — Contracts:** versioned upload, extracted-document, source-provenance, structured-proposal, job-state and API contracts; threat model and evaluation corpus.
+- **D1 — Ingestion:** authenticated PDF upload, signature/MIME validation, size/page/encryption limits, private object storage, content hash, tenant isolation and durable idempotent job creation.
+- **D2 — Extraction:** page-aware PDF text/layout parser; detect text-native, scanned and mixed pages; OCR fallback adapter; preserve headings, numbering, lists, tables and page references.
+- **D3 — Intelligence:** bounded chunking, schema-constrained extraction of topics, definitions, classifications, procedures, examples and semantic relations; distinguish source facts from interpretation; no external enrichment by default.
+- **D4 — Hierarchical builder and graph compiler:** source-faithful hierarchy (six levels as default target, not a hard cap), canonical graph v2 compiler, graph validator and provenance/duplicate checks.
+- **D5 — PDF Import Studio:** progress, proposed outline, map preview, source-page inspection, uncertainty warnings and accept/reject/selective-accept editing. No graph writes before explicit acceptance.
+- **D6 — Atomic workspace commit:** create map, root, topics, cross-links, initial revision and audit event in one authorized transaction; idempotent commit and rollback tests.
+- **D7 — Reliability/security:** retry/resume, cancellation, dead-letter handling, quotas, cost telemetry, retention/deletion, prompt-injection tests, privacy and load evaluation.
+- **D8 — Learning actions:** explain, expand, summarize and generate questions from accepted branches using the same propose → review → accept discipline.
+
+**Mandatory prerequisites:** canonical graph contract stable; PostgreSQL migration and tenant-isolation tests pass on a disposable database; atomic map creation and audited revision persistence exist; authenticated server persistence and private storage/queue adapters are ready. Do not bypass these prerequisites to ship a UI-only upload path.
+
+**Exit gate:** source provenance and quality evaluation pass; compiler output passes canonical graph validation; preview/rejection performs no writes; accepted content commits atomically; idempotency, authorization, adversarial input, quota/cost, privacy, recovery and browser E2E suites pass.
 
 ## P3 — Phase 5: Sharing and collaboration (4–8 weeks)
 
@@ -135,4 +144,4 @@ Start after shared API/domain contracts stabilize; can overlap with Android pack
 
 ## Critical path
 
-Repository/CI → identity and tenant model → graph invariants → editor/persistence → history and import/export → premium UX/templates → secure document/AI pipeline → collaboration/presentation → production hardening → shared cross-platform packages/API contracts → Android alpha → Windows desktop alpha → coordinated multi-platform release.
+Repository/CI → identity and tenant model → graph invariants → atomic persistence/revisions/recovery → editor → history and import/export → premium UX/templates → PDF-to-MindMap document pipeline → collaboration/presentation → production hardening → shared cross-platform packages/API contracts → Android alpha → Windows desktop alpha → coordinated multi-platform release.
