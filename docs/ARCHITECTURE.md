@@ -14,7 +14,10 @@ flowchart TB
   App --> Blob[Object Storage Adapter]
   App --> Jobs[Durable Job Queue Adapter]
   Jobs --> Workers[Node.js Workers]
-  Workers --> Docs[Document and Export Adapters]
+  Workers --> Docs[PDF Parser and Document Normalizer]
+  Workers --> OCR[OCR Provider Adapter]
+  Workers --> Knowledge[Document Intelligence and Hierarchical Builder]
+  Knowledge --> Compiler[Canonical Graph Compiler and Validator]
   Workers --> AI[AI Provider Adapter]
   App --> RT[Realtime Adapter]
   App --> Pay[Billing Adapter]
@@ -57,7 +60,7 @@ This is the initial deployment baseline, with provider-specific access kept behi
 - Storage: S3-compatible object-storage adapter for binary uploads and generated artifacts; never store large binaries directly in ordinary graph records.
 - Jobs: durable queue adapter with idempotency, bounded retries, dead-letter handling, observability and safe cancellation.
 - Realtime: transport-neutral collaboration interface; start only when needed, and keep authorization/domain validation authoritative on the server.
-- AI, email, billing, OCR and export: provider adapters with explicit capability contracts; never couple domain rules to one vendor.
+- AI, email, billing, OCR, PDF parsing and export: provider adapters with explicit capability contracts; never couple domain rules to one vendor.
 - Deployment: container-ready Node.js service, environment validation, health/readiness endpoints, graceful shutdown and repeatable migrations.
 
 ## Boundaries and modularity
@@ -68,6 +71,36 @@ This is the initial deployment baseline, with provider-specific access kept behi
 - Workers: document extraction/OCR, exports, AI generation, notifications and cleanup.
 - Realtime: synchronization transport only; operations still pass through domain validation.
 - Modules communicate through explicit interfaces and typed contracts. Avoid circular dependencies and cross-module database writes.
+
+## Document Intelligence pipeline
+
+PDF-to-MindMap is a bounded document-processing workflow that feeds the canonical graph; it is not a second graph engine or editor.
+
+```mermaid
+flowchart TD
+  Upload[Authenticated PDF Upload] --> Validate[Signature, Limits and Security Validation]
+  Validate --> Store[Private Object Storage + Document Record]
+  Store --> Queue[Durable Idempotent Job]
+  Queue --> Extract[Page-aware PDF Parser]
+  Extract --> OCR{Scanned or low-text page?}
+  OCR -->|Yes| OCRAdapter[Replaceable OCR Adapter]
+  OCR -->|No| Normalize[Normalize and Segment]
+  OCRAdapter --> Normalize
+  Normalize --> Understand[Structured Document Intelligence]
+  Understand --> Hierarchy[Hierarchical Knowledge Builder]
+  Hierarchy --> Compile[Canonical Graph Compiler]
+  Compile --> ValidateGraph[Canonical Graph Validator + Provenance Checks]
+  ValidateGraph --> Preview[Preview and Human Review]
+  Preview -->|Accept| Commit[Authorized Atomic Map/Root/Topics/Edges/Revision/Audit]
+  Preview -->|Reject or Edit| Review[No persisted graph mutation]
+```
+
+- The worker stores page-aware extraction artifacts outside ordinary graph rows. The proposal carries source spans and extraction metadata; the compiler targets the existing canonical graph contract.
+- Parser, OCR, AI, object storage and queue are replaceable adapters. Provider SDK types do not cross into domain packages.
+- Job stages are durable, idempotent, resumable and observable; transient errors retry with bounded backoff, permanent validation/authorization errors do not.
+- Documents and extracted text are untrusted input. Prompt injection is never executable instruction. Enforce tenant authorization, private object access, signed-link expiry, file/page/time/memory limits, quotas, retention and redacted telemetry.
+- The preview is isolated from persistence. Explicit acceptance invokes the same server-side authorization, domain validation, optimistic concurrency, revision and audit boundary as manual edits.
+- Detailed contracts and release gates live in [PDF-to-MindMap Intelligence Engine Blueprint](PDF_TO_MINDMAP_INTELLIGENCE_BLUEPRINT.md).
 
 ## Mind map engine
 - Stable UUID topic IDs independent of label, parent, ordering and coordinates.

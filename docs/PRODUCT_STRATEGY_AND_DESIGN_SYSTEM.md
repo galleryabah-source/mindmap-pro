@@ -17,7 +17,7 @@ MindMap Pro is a visual knowledge workspace: mind mapping, document-to-knowledge
 - Workspace: maps, folders/collections, shared items, archive and search.
 - Editor: compact top bar; optional left navigation rail; canvas; contextual inspector; collapsible outline/minimap; command palette.
 - Template Gallery: search, category filters, previews, favorites, duplicate-to-edit and user/team collections.
-- AI Knowledge Studio: document upload, extraction preview, source selection, generation settings, proposed outline, source citations and accept/reject review.
+- AI Knowledge Studio / PDF Import Studio: secure PDF upload, extraction progress, document outline, source selection, generation settings, hierarchical map preview, page-level provenance, uncertainty warnings and accept/reject/selective-accept review.
 - Presentation: step navigator, focused branch, presenter notes, keyboard navigation and clean audience view.
 - Settings: profile, workspace members, access, storage, export/delete data, appearance and plan/usage.
 
@@ -56,7 +56,9 @@ Launch with a small, carefully reviewed starter set; expand through quality-revi
 - Outline/tree editor synchronized with the canvas.
 - Branch focus and presentation mode.
 - Version history and restore-as-new-revision.
-- PDF/document-to-map with source citations and page references where available.
+- PDF-to-MindMap Intelligence Engine: convert books, regulations, reports, research and manuals into editable native maps with definitions, classifications, semantic relationships and page-level source traceability.
+- PDF Import Studio controls for whole-document, section, page-range or selected-topic conversion; summary/detailed modes; definitions/examples/procedures; original numbering; and source-faithful depth (six levels by default, deeper when justified).
+- Durable document jobs with OCR fallback for scanned/mixed PDFs, provider-neutral AI/OCR adapters, quotas, retry/resume, cost telemetry and explicit retention controls.
 - AI actions scoped to selected branch: explain, expand, summarize, compare, translate and generate questions.
 - Template preview and duplicate-to-edit.
 - Import/export validation and round-trip fidelity.
@@ -72,7 +74,9 @@ Launch with a small, carefully reviewed starter set; expand through quality-revi
 - Benchmark SVG and Canvas with realistic map sizes and mobile devices; introduce WebGL only if measurements justify the complexity.
 - Use incremental layout, viewport culling, batched updates and workers only where profiling demonstrates value.
 - Autosave must expose pending/saved/error status, be idempotent, preserve drafts during network failure and handle stale revisions.
-- Imports use validate → preview → commit; AI-generated graph changes use propose → review → accept.
+- Document imports use validate → extract → structure → compile → preview → explicit accept → atomic commit; AI-generated graph changes use propose → review → accept.
+- Document Intelligence produces a proposal DTO and compiles only into the existing canonical graph; it must not introduce a second graph schema or write directly to graph tables.
+- Every extracted claim/node retains source-page provenance where available; source facts, interpretation and optional external enrichment remain distinguishable.
 - Collaboration operations require server-side authorization and domain validation regardless of transport.
 
 ## Suggested delivery order
@@ -86,3 +90,12 @@ Launch with a small, carefully reviewed starter set; expand through quality-revi
 
 ## Definition of done
 Each feature includes: user story and acceptance criteria; domain rules; server-side authorization; migration/data ownership where applicable; responsive and accessible states; loading/error/offline behavior; unit/integration/E2E tests; telemetry; documentation; and rollback/recovery considerations.
+
+
+## PDF-to-MindMap product contract
+
+The PDF-to-MindMap Intelligence Engine is a core product capability. Its full implementation blueprint, system components, lifecycle, security requirements, delivery gates and acceptance tests are specified in [PDF_TO_MINDMAP_INTELLIGENCE_BLUEPRINT.md](PDF_TO_MINDMAP_INTELLIGENCE_BLUEPRINT.md).
+
+The user experience is a guided import workflow: upload → extraction → semantic structuring → hierarchical preview → source inspection → selective review → explicit acceptance → native workspace map. The system must infer the document's real structure rather than forcing every file into a chapter/article template. Six levels is a default depth target, not a hard limit.
+
+AI output is never treated as verified source truth. Unsupported additions and uncertainty must be labeled; preview and rejection must not mutate a map; acceptance must use the same authenticated, audited, revision-aware persistence service as manual graph editing. No feature is considered shipped until the blueprint's security, provenance, quality, idempotency and recovery acceptance criteria pass.

@@ -53,7 +53,7 @@ Template package contract: stable ID, schema version, title, description, catego
 - Outline/tree editing synchronized with the canvas.
 - Branch focus, deep expansion/collapse and presentation mode.
 - Version history, restore as a new revision and safe recovery.
-- PDF/document-to-map with source citations and page references when available.
+- PDF-to-MindMap Intelligence Engine: secure PDF ingestion, page-aware extraction/OCR, semantic and hierarchical knowledge construction, canonical graph compilation, source traceability and human-reviewed atomic workspace commit. See [the full blueprint](PDF_TO_MINDMAP_INTELLIGENCE_BLUEPRINT.md).
 - Branch-scoped AI: explain, expand, summarize, compare, translate and generate questions.
 - Template preview, duplicate-to-edit and custom template builder.
 - Validated import/export with round-trip fidelity.
@@ -89,8 +89,8 @@ Template package contract: stable ID, schema version, title, description, catego
 - SVG/PNG/PDF export and visual regression tests.
 
 **P2 — document intelligence**
-- Secure upload, extraction preview, source provenance/page references, job queue, quotas, cost telemetry and AI evaluation.
-- Branch-scoped AI actions with user review.
+- Deliver the staged PDF-to-MindMap pipeline defined in [PDF_TO_MINDMAP_INTELLIGENCE_BLUEPRINT.md](PDF_TO_MINDMAP_INTELLIGENCE_BLUEPRINT.md): contracts, secure ingestion, parser/OCR, source-grounded semantic extraction, hierarchical builder, canonical graph compiler/validator, review studio, atomic commit and operational hardening.
+- Branch-scoped AI actions with user review; never bypass canonical graph, authorization, revision or audit services.
 
 **P3 — collaboration and planning**
 - Sharing roles, revocable links, comments and concurrency/reconnect tests.
