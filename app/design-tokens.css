@@ -1,0 +1,89 @@
+/* MindMap Pro semantic design tokens — UI-01 foundation.
+   Components should consume semantic tokens rather than introduce one-off values. */
+:root {
+  color-scheme: light;
+  --mm-color-canvas: #f6f7fb;
+  --mm-color-surface: #ffffff;
+  --mm-color-surface-muted: #fbfbfe;
+  --mm-color-border: #e8eaf3;
+  --mm-color-border-strong: #d9dced;
+  --mm-color-text: #25263a;
+  --mm-color-text-muted: #8589a5;
+  --mm-color-text-subtle: #a0a3b8;
+  --mm-color-primary: #6465e9;
+  --mm-color-primary-hover: #5556d9;
+  --mm-color-primary-soft: #f0f0ff;
+  --mm-color-secondary: #8b5cf6;
+  --mm-color-success: #16a34a;
+  --mm-color-warning: #d97706;
+  --mm-color-danger: #dc2626;
+  --mm-color-focus: #818cf8;
+  --mm-color-overlay: rgb(22 23 43 / 38%);
+
+  --mm-font-body: "DM Sans", Arial, sans-serif;
+  --mm-font-display: "Manrope", "DM Sans", sans-serif;
+  --mm-font-size-xs: 0.75rem;
+  --mm-font-size-sm: 0.875rem;
+  --mm-font-size-md: 1rem;
+  --mm-font-size-lg: 1.125rem;
+  --mm-font-size-xl: 1.375rem;
+
+  --mm-space-1: 0.25rem;
+  --mm-space-2: 0.5rem;
+  --mm-space-3: 0.75rem;
+  --mm-space-4: 1rem;
+  --mm-space-5: 1.25rem;
+  --mm-space-6: 1.5rem;
+  --mm-space-8: 2rem;
+  --mm-space-10: 2.5rem;
+  --mm-space-12: 3rem;
+
+  --mm-radius-sm: 0.375rem;
+  --mm-radius-md: 0.625rem;
+  --mm-radius-lg: 0.875rem;
+  --mm-radius-xl: 1.125rem;
+  --mm-radius-full: 9999px;
+
+  --mm-shadow-sm: 0 1px 2px rgb(20 24 40 / 5%);
+  --mm-shadow-md: 0 4px 14px rgb(20 24 40 / 8%);
+  --mm-shadow-lg: 0 12px 32px rgb(20 24 40 / 12%);
+  --mm-motion-fast: 120ms ease;
+  --mm-motion-normal: 200ms ease;
+  --mm-focus-ring: 0 0 0 3px rgb(129 140 248 / 28%);
+}
+
+.dark-mode {
+  color-scheme: dark;
+  --mm-color-canvas: #151624;
+  --mm-color-surface: #202133;
+  --mm-color-surface-muted: #282a40;
+  --mm-color-border: #303248;
+  --mm-color-border-strong: #3a3c55;
+  --mm-color-text: #f1f2ff;
+  --mm-color-text-muted: #b5b8d3;
+  --mm-color-text-subtle: #a7aac3;
+  --mm-color-primary: #8585ff;
+  --mm-color-primary-hover: #9999ff;
+  --mm-color-primary-soft: #34345c;
+  --mm-color-secondary: #b09aff;
+  --mm-color-success: #4ade80;
+  --mm-color-warning: #fbbf24;
+  --mm-color-danger: #f87171;
+  --mm-color-focus: #a5b4fc;
+  --mm-color-overlay: rgb(0 0 0 / 58%);
+  --mm-shadow-sm: 0 1px 2px rgb(0 0 0 / 18%);
+  --mm-shadow-md: 0 4px 14px rgb(0 0 0 / 24%);
+  --mm-shadow-lg: 0 12px 32px rgb(0 0 0 / 34%);
+  --mm-focus-ring: 0 0 0 3px rgb(165 180 252 / 30%);
+}
+
+:focus-visible {
+  outline: 2px solid var(--mm-color-focus);
+  outline-offset: 2px;
+  box-shadow: var(--mm-focus-ring);
+}
+
+::selection {
+  color: var(--mm-color-text);
+  background: var(--mm-color-primary-soft);
+}
