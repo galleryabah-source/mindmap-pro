@@ -152,22 +152,22 @@ begin
 
   for v_node in select value from jsonb_array_elements(v_nodes) as n(value) loop
     if jsonb_typeof(v_node) <> 'object'
-      or jsonb_typeof(v_node -> 'id') <> 'string'
+      or jsonb_typeof(v_node -> 'id') is distinct from 'string'
       or char_length(btrim(v_node ->> 'id')) not between 1 and 128 then
       raise exception 'Topic identity is invalid' using errcode = '22023';
     end if;
 
     v_id := v_node ->> 'id';
     if jsonb_typeof(v_node -> 'position') <> 'object'
-      or jsonb_typeof(v_node -> 'position' -> 'x') <> 'number'
-      or jsonb_typeof(v_node -> 'position' -> 'y') <> 'number'
+      or jsonb_typeof(v_node -> 'position' -> 'x') is distinct from 'number'
+      or jsonb_typeof(v_node -> 'position' -> 'y') is distinct from 'number'
       or abs((v_node -> 'position' ->> 'x')::numeric) > 10000000
       or abs((v_node -> 'position' ->> 'y')::numeric) > 10000000 then
       raise exception 'Topic position is invalid' using errcode = '22023';
     end if;
 
     if jsonb_typeof(v_node -> 'data') <> 'object'
-      or jsonb_typeof(v_node -> 'data' -> 'label') <> 'string'
+      or jsonb_typeof(v_node -> 'data' -> 'label') is distinct from 'string'
       or char_length(v_node -> 'data' ->> 'label') > 2000
       or (v_node -> 'data' ? 'notes' and (
         jsonb_typeof(v_node -> 'data' -> 'notes') <> 'string'
@@ -188,7 +188,7 @@ begin
       if not (v_node ? 'parentId') or v_node -> 'parentId' <> 'null'::jsonb then
         raise exception 'Root topic must have parentId null' using errcode = '22023';
       end if;
-    elsif jsonb_typeof(v_node -> 'parentId') <> 'string'
+    elsif jsonb_typeof(v_node -> 'parentId') is distinct from 'string'
       or char_length(btrim(v_node ->> 'parentId')) not between 1 and 128 then
       raise exception 'Every non-root topic must have a valid parentId' using errcode = '22023';
     end if;
@@ -240,11 +240,11 @@ begin
 
   for v_edge in select value from jsonb_array_elements(v_edges) as e(value) loop
     if jsonb_typeof(v_edge) <> 'object'
-      or v_edge ->> 'type' <> 'cross_link'
-      or jsonb_typeof(v_edge -> 'id') <> 'string'
+      or v_edge ->> 'type' is distinct from 'cross_link'
+      or jsonb_typeof(v_edge -> 'id') is distinct from 'string'
       or char_length(btrim(v_edge ->> 'id')) not between 1 and 128
-      or jsonb_typeof(v_edge -> 'source') <> 'string'
-      or jsonb_typeof(v_edge -> 'target') <> 'string'
+      or jsonb_typeof(v_edge -> 'source') is distinct from 'string'
+      or jsonb_typeof(v_edge -> 'target') is distinct from 'string'
       or char_length(btrim(v_edge ->> 'source')) not between 1 and 128
       or char_length(btrim(v_edge ->> 'target')) not between 1 and 128
       or v_edge ->> 'source' = v_edge ->> 'target'
@@ -319,7 +319,7 @@ begin
     (n.value -> 'position' ->> 'y')::double precision,
     n.ordinality::numeric,
     coalesce(n.value -> 'style', '{}'::jsonb),
-    coalesce(n.value -> 'data' - 'label' - 'notes', '{}'::jsonb),
+    coalesce((n.value -> 'data') - 'label' - 'notes', '{}'::jsonb),
     p_actor_id
   from jsonb_array_elements(p_graph -> 'nodes') with ordinality as n(value, ordinality)
   join tree on tree.id = n.value ->> 'id'
