@@ -52,6 +52,41 @@ export function parseJsonBody(raw: string): { ok: true; value: unknown } | { ok:
   }
 }
 
+export async function readJsonRequest(request: Request): Promise<{ ok: true; value: unknown } | { ok: false; problem: ApiProblem }> {
+  const declaredLength = Number(request.headers.get("content-length"));
+  if (Number.isFinite(declaredLength) && declaredLength > MAX_PERSISTENCE_BODY_BYTES) {
+    return { ok: false, problem: { status: 413, code: "PAYLOAD_TOO_LARGE", message: "Ukuran permintaan melebihi batas 10 MB." } };
+  }
+
+  if (!request.body) return parseJsonBody("");
+
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let totalBytes = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      totalBytes += value.byteLength;
+      if (totalBytes > MAX_PERSISTENCE_BODY_BYTES) {
+        await reader.cancel();
+        return { ok: false, problem: { status: 413, code: "PAYLOAD_TOO_LARGE", message: "Ukuran permintaan melebihi batas 10 MB." } };
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  const bytes = new Uint8Array(totalBytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return parseJsonBody(new TextDecoder().decode(bytes));
+}
+
 export function parsePersistedDocument(value: unknown): PersistedDocument | null {
   if (!isRecord(value) || value.format !== "mindmap-pro" || value.version !== 2 || !isRecord(value.graph)) {
     return null;
