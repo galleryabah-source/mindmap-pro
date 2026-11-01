@@ -3,7 +3,7 @@ import {
   isWorkspaceId,
   mapWorkspaceDatabaseError,
   parseCreateWorkspaceInput,
-} from "@/lib/server/workspace-api";
+} from "../lib/server/workspace-api";
 
 describe("workspace API contract", () => {
   it("normalizes a valid workspace name and slug", () => {
