@@ -17,9 +17,9 @@ export function AuthEntry() {
 
     try {
       const supabase = createClient();
-      supabase.auth.getUser().then(({ data }) => {
+      supabase.auth.getSession().then(({ data }) => {
         if (active) {
-          setUser(data.user ? { email: data.user.email } : null);
+          setUser(data.session?.user ? { email: data.session.user.email } : null);
           setConfigured(true);
           setReady(true);
         }
