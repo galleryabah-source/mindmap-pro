@@ -45,9 +45,9 @@ create index if not exists maps_workspace_updated_idx
   where deleted_at is null;
 
 create table if not exists public.topics (
-  id uuid primary key default gen_random_uuid(),
+  id text not null check (length(id) between 1 and 128),
   map_id uuid not null references public.maps(id) on delete cascade,
-  parent_id uuid,
+  parent_id text,
   title text not null default '' check (length(title) <= 2000),
   notes text not null default '' check (length(notes) <= 50000),
   position_x double precision not null default 0 check (position_x between -10000000 and 10000000),
@@ -58,17 +58,23 @@ create table if not exists public.topics (
   created_by uuid not null references auth.users(id) on delete restrict,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  constraint topics_id_map_unique unique (id, map_id),
+  primary key (map_id, id),
   constraint topics_no_self_parent check (parent_id is null or parent_id <> id),
+  constraint topics_root_identity check ((parent_id is null) = (id = 'root')),
   constraint topics_parent_same_map_fk
-    foreign key (parent_id, map_id)
-    references public.topics (id, map_id)
+    foreign key (map_id, parent_id)
+    references public.topics (map_id, id)
     on delete cascade
     deferrable initially deferred
 );
 
 create index if not exists topics_map_parent_order_idx
   on public.topics (map_id, parent_id, sort_key, id);
+
+-- A map has at most one root topic; canonical root identity is the map-scoped text ID 'root'.
+create unique index if not exists topics_one_root_per_map_idx
+  on public.topics (map_id)
+  where parent_id is null;
 
 -- Serialize parent changes per map and reject cycles in the canonical parent_id tree.
 create or replace function public.prevent_topic_parent_cycle()
@@ -121,28 +127,32 @@ before insert or update of parent_id, map_id on public.topics
 for each row execute function public.prevent_topic_parent_cycle();
 
 create table if not exists public.map_edges (
-  id uuid primary key default gen_random_uuid(),
+  id text not null check (length(id) between 1 and 128),
   map_id uuid not null references public.maps(id) on delete cascade,
-  source_topic_id uuid not null,
-  target_topic_id uuid not null,
+  source_topic_id text not null,
+  target_topic_id text not null,
   edge_type text not null default 'cross_link' check (edge_type = 'cross_link'),
   label text not null default '' check (length(label) <= 500),
   style jsonb not null default '{}'::jsonb check (jsonb_typeof(style) = 'object'),
   created_by uuid not null references auth.users(id) on delete restrict,
   created_at timestamptz not null default now(),
   constraint map_edges_no_self_link check (source_topic_id <> target_topic_id),
+  primary key (map_id, id),
   constraint map_edges_source_same_map_fk
-    foreign key (source_topic_id, map_id)
-    references public.topics (id, map_id)
+    foreign key (map_id, source_topic_id)
+    references public.topics (map_id, id)
     on delete cascade
     deferrable initially deferred,
   constraint map_edges_target_same_map_fk
-    foreign key (target_topic_id, map_id)
-    references public.topics (id, map_id)
+    foreign key (map_id, target_topic_id)
+    references public.topics (map_id, id)
     on delete cascade
-    deferrable initially deferred,
-  constraint map_edges_unique unique (map_id, source_topic_id, target_topic_id, edge_type)
+    deferrable initially deferred
 );
+
+-- Cross-links are undirected in the canonical graph contract; reject reversed duplicates too.
+create unique index if not exists map_edges_unique_undirected_idx
+  on public.map_edges (map_id, least(source_topic_id, target_topic_id), greatest(source_topic_id, target_topic_id), edge_type);
 
 create index if not exists map_edges_map_source_idx on public.map_edges (map_id, source_topic_id);
 create index if not exists map_edges_map_target_idx on public.map_edges (map_id, target_topic_id);
@@ -199,6 +209,42 @@ for each row execute function public.set_updated_at();
 drop trigger if exists topics_set_updated_at on public.topics;
 create trigger topics_set_updated_at before update on public.topics
 for each row execute function public.set_updated_at();
+
+-- Keep canonical identity and tenant ownership stable after record creation.
+-- Mutable content is updated through domain commands; moving records between maps
+-- or workspaces must use an explicit, audited transfer workflow (not direct UPDATE).
+create or replace function public.guard_immutable_identity()
+returns trigger
+language plpgsql
+set search_path = ''
+as $
+declare
+  v_column text;
+begin
+  foreach v_column in array tg_argv loop
+    if (to_jsonb(new) -> v_column) is distinct from (to_jsonb(old) -> v_column) then
+      raise exception 'Column % is immutable for this resource', v_column
+        using errcode = '23514';
+    end if;
+  end loop;
+  return new;
+end;
+$;
+
+drop trigger if exists maps_guard_identity on public.maps;
+create trigger maps_guard_identity
+before update on public.maps
+for each row execute function public.guard_immutable_identity('id', 'workspace_id', 'created_by');
+
+drop trigger if exists topics_guard_identity on public.topics;
+create trigger topics_guard_identity
+before update on public.topics
+for each row execute function public.guard_immutable_identity('id', 'map_id', 'created_by');
+
+drop trigger if exists map_edges_guard_identity on public.map_edges;
+create trigger map_edges_guard_identity
+before update on public.map_edges
+for each row execute function public.guard_immutable_identity('id', 'map_id', 'created_by');
 
 create or replace function public.is_workspace_member(p_workspace_id uuid)
 returns boolean
