@@ -21,6 +21,11 @@ export type CreateMapInput = {
   description: string;
 };
 
+export type CreateWorkspaceInput = {
+  name: string;
+  slug: string;
+};
+
 export type CommitMapGraphInput = {
   expectedRevision: number;
   requestId: string;
@@ -97,6 +102,24 @@ export function parsePersistedDocument(value: unknown): PersistedDocument | null
   } catch {
     return null;
   }
+}
+
+export function parseCreateWorkspaceInput(value: unknown): CreateWorkspaceInput | null {
+  if (!isRecord(value)
+    || typeof value.name !== "string"
+    || typeof value.slug !== "string") {
+    return null;
+  }
+
+  const name = value.name.trim();
+  const slug = value.slug.trim().toLowerCase();
+  if (name.length < 1 || name.length > 120
+    || slug.length < 1 || slug.length > 80
+    || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
+    return null;
+  }
+
+  return { name, slug };
 }
 
 export function parseCreateMapInput(value: unknown): CreateMapInput | null {
