@@ -112,6 +112,12 @@
   background: var(--mm-color-surface);
 }
 .headerCopy { min-width: 0; }
+.headerActions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.65rem;
+}
 .eyebrow {
   color: var(--mm-color-text-subtle);
   font-size: 0.62rem;
@@ -161,6 +167,7 @@
     padding: 1.2rem 1rem;
   }
   .header p { max-width: 42ch; line-height: 1.5; }
+  .headerActions { gap: 0.45rem; }
   .createButton { min-height: 40px; padding: 0 0.7rem; }
   .createButton span { display: none; }
   .mobileNavigation {
