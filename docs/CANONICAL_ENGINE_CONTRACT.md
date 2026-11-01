@@ -17,6 +17,8 @@ Persisted documents use:
 
 The topic with ID `root` is mandatory and must have `parentId: null`. Every other topic must have exactly one valid parent chain leading to root. Cross-links never define hierarchy and never cause subtree cascade operations.
 
+Topic and cross-link IDs are opaque strings scoped to a map, not UUIDs. Their IDs and owning `map_id` are immutable after insertion; map IDs and workspace ownership are also immutable through ordinary updates. This prevents silent identity changes and cross-tenant reassignment outside a future explicit audited transfer operation. The stable root ID is `root`; editor-generated IDs such as `topic-...` and `link-...` must be persisted without coercion. PostgreSQL therefore uses `(map_id, id)` composite keys for topics and cross-links. A database check requires the only parentless topic to use ID `root`, and a partial unique index permits at most one root topic per map; the application transaction must create the root before making the map available.
+
 ## Domain command boundary
 
 All graph mutations should pass through validated domain commands:
