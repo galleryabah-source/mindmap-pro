@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-  isJsonContentType,\n  isUuid,
+  isJsonContentType,
+  isUuid,
   isValidWriteResponse,
   mapSupabaseError,
   parseCommitMapGraphInput,
@@ -29,7 +30,14 @@ const mapId = "00000000-0000-4000-8000-000000000003";
 const snapshotId = "00000000-0000-4000-8000-000000000004";
 
 describe("persistence API contract", () => {
-  it("accepts JSON content types with optional charset parameters", () => {\n    expect(isJsonContentType("application/json")).toBe(true);\n    expect(isJsonContentType("application/json; charset=utf-8")).toBe(true);\n    expect(isJsonContentType("application/jsonp")).toBe(false);\n    expect(isJsonContentType(null)).toBe(false);\n  });\n\n  it("accepts RFC 4122 UUID identifiers", () => {
+  it("accepts JSON content types with optional charset parameters", () => {
+    expect(isJsonContentType("application/json")).toBe(true);
+    expect(isJsonContentType("application/json; charset=utf-8")).toBe(true);
+    expect(isJsonContentType("application/jsonp")).toBe(false);
+    expect(isJsonContentType(null)).toBe(false);
+  });
+
+  it("accepts RFC 4122 UUID identifiers", () => {
     expect(isUuid(workspaceId)).toBe(true);
     expect(isUuid("not-a-uuid")).toBe(false);
     expect(isUuid(null)).toBe(false);
