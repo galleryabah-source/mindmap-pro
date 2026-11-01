@@ -7,6 +7,7 @@ import {
 } from "@/lib/server/workspace-api";
 
 export const runtime = "nodejs";
+const MAX_WORKSPACE_REQUEST_BYTES = 16 * 1024;
 
 function problem(status: number, code: string, message: string) {
   return NextResponse.json({ error: { code, message } }, { status });
@@ -24,6 +25,63 @@ async function getAuthenticatedClient() {
   }
 
   return { supabase, response: null };
+}
+
+async function readLimitedJson(request: Request): Promise<
+  { ok: true; value: unknown } | { ok: false; status: number; code: string; message: string }
+> {
+  const declaredLength = Number(request.headers.get("content-length"));
+  if (Number.isFinite(declaredLength) && declaredLength > MAX_WORKSPACE_REQUEST_BYTES) {
+    return {
+      ok: false,
+      status: 413,
+      code: "PAYLOAD_TOO_LARGE",
+      message: "Ukuran permintaan melebihi batas 16 KB.",
+    };
+  }
+
+  if (!request.body) {
+    return { ok: false, status: 400, code: "INVALID_JSON", message: "Body permintaan bukan JSON yang valid." };
+  }
+
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let totalBytes = 0;
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      totalBytes += value.byteLength;
+      if (totalBytes > MAX_WORKSPACE_REQUEST_BYTES) {
+        await reader.cancel();
+        return {
+          ok: false,
+          status: 413,
+          code: "PAYLOAD_TOO_LARGE",
+          message: "Ukuran permintaan melebihi batas 16 KB.",
+        };
+      }
+      chunks.push(value);
+    }
+  } catch {
+    return { ok: false, status: 400, code: "INVALID_JSON", message: "Body permintaan tidak dapat dibaca." };
+  } finally {
+    reader.releaseLock();
+  }
+
+  const bytes = new Uint8Array(totalBytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+
+  try {
+    return { ok: true, value: JSON.parse(new TextDecoder().decode(bytes)) as unknown };
+  } catch {
+    return { ok: false, status: 400, code: "INVALID_JSON", message: "Body permintaan bukan JSON yang valid." };
+  }
 }
 
 export async function GET() {
@@ -56,19 +114,10 @@ export async function POST(request: Request) {
     const auth = await getAuthenticatedClient();
     if (!auth.supabase) return auth.response;
 
-    const rawBody = await request.text();
-    if (new TextEncoder().encode(rawBody).byteLength > 16 * 1024) {
-      return problem(413, "PAYLOAD_TOO_LARGE", "Ukuran permintaan melebihi batas 16 KB.");
-    }
+    const parsed = await readLimitedJson(request);
+    if (!parsed.ok) return problem(parsed.status, parsed.code, parsed.message);
 
-    let body: unknown;
-    try {
-      body = JSON.parse(rawBody) as unknown;
-    } catch {
-      return problem(400, "INVALID_JSON", "Body permintaan bukan JSON yang valid.");
-    }
-
-    const input = parseCreateWorkspaceInput(body);
+    const input = parseCreateWorkspaceInput(parsed.value);
     if (!input) {
       return problem(422, "INVALID_WORKSPACE_INPUT", "Nama atau slug workspace tidak valid.");
     }
