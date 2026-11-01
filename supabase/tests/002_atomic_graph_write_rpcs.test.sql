@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(38);
+select plan(37);
 
 select has_table('public', 'map_write_requests', 'idempotency ledger table exists');
 select ok((select relrowsecurity from pg_class where oid = 'public.map_write_requests'::regclass), 'idempotency ledger has RLS enabled');
