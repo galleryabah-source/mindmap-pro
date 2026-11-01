@@ -36,7 +36,7 @@ The code uses `@supabase/ssr` browser/server clients and a Next.js 16 `proxy.ts`
 - Do not run this migration against unrelated existing projects such as `MTA DETENI` or `galleryabah`.
 
 ## Validation
-A pgTAP suite lives at `supabase/tests/001_schema_security.test.sql`. It checks required tables, RLS enablement, security helpers, immutable identities, SECURITY DEFINER RPC execution grants, and the fail-closed direct-write boundary across workspace/map/topic/edge/revision/audit tables. The current suite contains 57 assertions. The suite and migration have not yet been run against a dedicated database.
+A pgTAP suite lives at `supabase/tests/001_schema_security.test.sql`. It checks required tables, RLS enablement, security helpers, immutable identities, SECURITY DEFINER RPC execution grants, and the fail-closed direct-write boundary across workspace/map/topic/edge/revision/audit tables. The current suite contains 57 assertions. GitHub Actions applies the migration and runs this suite against a disposable local Supabase database. The synchronized database-boundary CI run passed all 57 assertions. No hosted Supabase project is linked or modified.
 
 ## Apply checklist
 1. Create/identify a dedicated Supabase project named MindMap Pro and verify its project ref and expected cost.
