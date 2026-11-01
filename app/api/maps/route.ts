@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { isUuid, mapSupabaseError, parseCreateMapInput, parseJsonBody } from "@/lib/server/persistence-api";
+import { isJsonContentType, isUuid, isValidWriteResponse, mapSupabaseError, parseCreateMapInput, parseJsonBody } from "@/lib/server/persistence-api";
 
 export const runtime = "nodejs";
 
@@ -42,7 +42,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    if (!request.headers.get("content-type")?.toLowerCase().includes("application/json")) {
+    if (!isJsonContentType(request.headers.get("content-type"))) {
       return problem(415, "UNSUPPORTED_MEDIA_TYPE", "Gunakan Content-Type application/json.");
     }
     const parsed = parseJsonBody(await request.text());
@@ -63,7 +63,7 @@ export async function POST(request: Request) {
       const mapped = mapSupabaseError(error);
       return problem(mapped.status, mapped.code, mapped.message);
     }
-    if (!data || typeof data !== "object" || (data as { requestId?: unknown }).requestId !== input.requestId) {
+    if (!isValidWriteResponse(data, input.requestId)) {
       return problem(502, "INVALID_PERSISTENCE_RESPONSE", "Server database mengembalikan respons yang tidak valid.");
     }
     return NextResponse.json({ data }, { status: 201 });
