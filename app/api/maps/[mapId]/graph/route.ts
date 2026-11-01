@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { isValidWriteResponse, isUuid, mapSupabaseError, parseCommitMapGraphInput, parseJsonBody } from "@/lib/server/persistence-api";
+import { isJsonContentType, isValidWriteResponse, isUuid, mapSupabaseError, parseCommitMapGraphInput, parseJsonBody } from "@/lib/server/persistence-api";
 
 export const runtime = "nodejs";
 
@@ -14,7 +14,7 @@ export async function PUT(request: Request, context: RouteContext) {
   try {
     const { mapId } = await context.params;
     if (!isUuid(mapId)) return problem(400, "INVALID_MAP_ID", "mapId harus berupa UUID yang valid.");
-    if (!request.headers.get("content-type")?.toLowerCase().includes("application/json")) {
+    if (!isJsonContentType(request.headers.get("content-type"))) {
       return problem(415, "UNSUPPORTED_MEDIA_TYPE", "Gunakan Content-Type application/json.");
     }
 
