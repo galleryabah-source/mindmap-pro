@@ -20,15 +20,15 @@ export default function DashboardPage() {
           </Link>
         </div>
         <div className={styles.visual} aria-hidden="true">
-          <div className={styles.orbit orbitOuter} />
-          <div className={styles.orbit orbitInner} />
-          <div className={styles.mapNode mapRoot}><Network size={23} /></div>
-          <div className={styles.mapNode mapOne}>Ide</div>
-          <div className={styles.mapNode mapTwo}>Riset</div>
-          <div className={styles.mapNode mapThree}>Aksi</div>
-          <span className={styles.mapLine lineOne} />
-          <span className={styles.mapLine lineTwo} />
-          <span className={styles.mapLine lineThree} />
+          <div className={`${styles.orbit} ${styles.orbitOuter}`} />
+          <div className={`${styles.orbit} ${styles.orbitInner}`} />
+          <div className={`${styles.mapNode} ${styles.mapRoot}`}><Network size={23} /></div>
+          <div className={`${styles.mapNode} ${styles.mapOne}`}>Ide</div>
+          <div className={`${styles.mapNode} ${styles.mapTwo}`}>Riset</div>
+          <div className={`${styles.mapNode} ${styles.mapThree}`}>Aksi</div>
+          <span className={`${styles.mapLine} ${styles.lineOne}`} />
+          <span className={`${styles.mapLine} ${styles.lineTwo}`} />
+          <span className={`${styles.mapLine} ${styles.lineThree}`} />
         </div>
       </section>
 
