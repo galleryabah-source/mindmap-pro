@@ -1,0 +1,116 @@
+.workspaceGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+.workspaceCard {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 1.2rem;
+  border: 1px solid var(--mm-color-border);
+  border-radius: var(--mm-radius-lg);
+  background: var(--mm-color-surface);
+}
+.workspaceName {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--mm-color-text);
+  font: 750 1rem var(--mm-font-display);
+}
+.workspaceSlug, .workspaceMeta {
+  color: var(--mm-color-text-muted);
+  font-size: 0.75rem;
+}
+.workspaceMeta { margin-top: 0.35rem; }
+.form {
+  display: grid;
+  gap: 0.55rem;
+  width: min(100%, 440px);
+}
+.form label {
+  margin-top: 0.35rem;
+  color: var(--mm-color-text);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+.form input {
+  width: 100%;
+  min-height: 42px;
+  padding: 0 0.75rem;
+  border: 1px solid var(--mm-color-border-strong);
+  border-radius: var(--mm-radius-md);
+  background: var(--mm-color-canvas);
+  color: var(--mm-color-text);
+}
+.form input:focus-visible {
+  outline: none;
+  border-color: var(--mm-color-primary);
+  box-shadow: var(--mm-focus-ring);
+}
+.submit {
+  min-height: 42px;
+  margin-top: 0.5rem;
+  border: 0;
+  border-radius: var(--mm-radius-md);
+  background: var(--mm-color-primary);
+  color: white;
+  font-weight: 750;
+}
+.submit:disabled { cursor: wait; opacity: 0.6; }
+.error { margin: 0.3rem 0; color: #b42318; font-size: 0.78rem; }
+.stateCard {
+  padding: 1.25rem;
+  border: 1px solid var(--mm-color-border);
+  border-radius: var(--mm-radius-lg);
+  background: var(--mm-color-surface);
+}
+.stateCard h3 { margin: 0 0 0.4rem; font: 750 1rem var(--mm-font-display); }
+.stateCard p { margin: 0; color: var(--mm-color-text-muted); font-size: 0.82rem; line-height: 1.65; }
+.actionLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  margin-top: 1rem;
+  padding: 0 0.9rem;
+  border-radius: var(--mm-radius-md);
+  background: var(--mm-color-primary);
+  color: white;
+  font-size: 0.8rem;
+  font-weight: 750;
+  text-decoration: none;
+}
+@media (max-width: 640px) {
+  .workspaceGrid { grid-template-columns: 1fr; }
+}
+
+.loadingCard {
+  min-height: 132px;
+  border: 1px solid var(--mm-color-border);
+  border-radius: var(--mm-radius-lg);
+  background: linear-gradient(100deg, var(--mm-color-surface-muted), var(--mm-color-surface), var(--mm-color-surface-muted));
+  background-size: 200% 100%;
+  animation: workspace-loading 1.5s ease-in-out infinite;
+}
+.actionButton {
+  min-height: 42px;
+  margin-top: 1rem;
+  padding: 0 0.9rem;
+  border: 0;
+  border-radius: var(--mm-radius-md);
+  background: var(--mm-color-primary);
+  color: white;
+  font-size: 0.8rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+.actionButton:focus-visible { outline: none; box-shadow: var(--mm-focus-ring); }
+@keyframes workspace-loading {
+  from { background-position: 100% 0; }
+  to { background-position: -100% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .loadingCard { animation: none; }
+}
