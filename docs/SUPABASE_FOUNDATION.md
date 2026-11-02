@@ -23,6 +23,10 @@ Copy `.env.example` to `.env.local`, then fill in only the URL and publishable k
 
 The code uses `@supabase/ssr` browser/server clients and a Next.js 16 `proxy.ts` session-refresh hook. If credentials are absent, the proxy leaves the current local editor usable; cloud features must not be enabled until the project has been verified and the migration tested.
 
+## Data API exposure prerequisite
+
+Supabase no longer automatically exposes newly created public-schema tables to the Data API by default (enforcement for all projects began October 30, 2026). Before using the `supabase-js` `.from()` calls in this application, explicitly expose the required schema in the dedicated project's Data API settings and retain the table grants plus RLS policies defined by the migration. Schema exposure, SQL privileges, and RLS are separate controls; all three must be correct.
+
 ## Security assumptions and limits
 - All seven data tables enable Row Level Security.
 - Workspace membership is checked in RLS, not only in the UI.
