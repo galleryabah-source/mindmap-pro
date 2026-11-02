@@ -7,10 +7,18 @@ import {
 } from "@/lib/server/workspace-api";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 const MAX_WORKSPACE_REQUEST_BYTES = 16 * 1024;
 
+function privateJson(body: unknown, init?: ResponseInit) {
+  const response = NextResponse.json(body, init);
+  response.headers.set("Cache-Control", "private, no-store, max-age=0");
+  response.headers.set("Vary", "Cookie, Authorization");
+  return response;
+}
+
 function problem(status: number, code: string, message: string) {
-  return NextResponse.json({ error: { code, message } }, { status });
+  return privateJson({ error: { code, message } }, { status });
 }
 
 async function getAuthenticatedClient() {
@@ -99,7 +107,7 @@ export async function GET() {
       return problem(mapped.status, mapped.code, mapped.message);
     }
 
-    return NextResponse.json({ data: data ?? [] });
+    return privateJson({ data: data ?? [] });
   } catch {
     return problem(503, "PERSISTENCE_UNAVAILABLE", "Layanan workspace belum tersedia.");
   }
@@ -136,7 +144,7 @@ export async function POST(request: Request) {
       return problem(502, "INVALID_PERSISTENCE_RESPONSE", "Database mengembalikan ID workspace yang tidak valid.");
     }
 
-    return NextResponse.json({ data: { id: data, ...input } }, { status: 201 });
+    return privateJson({ data: { id: data, ...input } }, { status: 201 });
   } catch {
     return problem(503, "PERSISTENCE_UNAVAILABLE", "Layanan workspace belum tersedia.");
   }
