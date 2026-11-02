@@ -277,8 +277,8 @@ as $$
   );
 $$;
 
-revoke all on function public.is_workspace_member(uuid) from public;
-revoke all on function public.has_workspace_role(uuid, text[]) from public;
+revoke all on function public.is_workspace_member(uuid) from public, anon;
+revoke all on function public.has_workspace_role(uuid, text[]) from public, anon;
 grant execute on function public.is_workspace_member(uuid) to authenticated;
 grant execute on function public.has_workspace_role(uuid, text[]) to authenticated;
 
@@ -287,20 +287,20 @@ returns uuid
 language plpgsql
 security definer
 set search_path = ''
-as $$
+as $
 declare
   v_user_id uuid := auth.uid();
   v_workspace_id uuid;
-  v_name text := trim(coalesce(p_name, ''));
-  v_slug text := lower(trim(coalesce(p_slug, '')));
+  v_name text := pg_catalog.btrim(coalesce(p_name, ''));
+  v_slug text := pg_catalog.lower(pg_catalog.btrim(coalesce(p_slug, '')));
 begin
   if v_user_id is null then
     raise exception 'Authentication required' using errcode = '42501';
   end if;
-  if length(v_name) not between 1 and 120 then
+  if pg_catalog.length(v_name) not between 1 and 120 then
     raise exception 'Workspace name must contain 1 to 120 characters' using errcode = '22023';
   end if;
-  if length(v_slug) not between 1 and 80 or v_slug !~ '^[a-z0-9]+(-[a-z0-9]+)*$' then
+  if pg_catalog.length(v_slug) not between 1 and 80 or v_slug !~ '^[a-z0-9]+(-[a-z0-9]+)*$' then
     raise exception 'Workspace slug is invalid' using errcode = '22023';
   end if;
 
@@ -318,7 +318,7 @@ begin
 end;
 $$;
 
-revoke all on function public.create_workspace(text, text) from public;
+revoke all on function public.create_workspace(text, text) from public, anon;
 grant execute on function public.create_workspace(text, text) to authenticated;
 
 alter table public.workspaces enable row level security;
