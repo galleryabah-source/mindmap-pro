@@ -33,6 +33,7 @@ The code uses `@supabase/ssr` browser/server clients and a Next.js 16 `proxy.ts`
 - The topic parent foreign key prevents cross-map parenting, and a per-map lock plus recursive trigger rejects parent cycles. This requires concurrent database tests before production.
 - RLS policies and SECURITY DEFINER functions require validation against a dedicated project with authenticated test users before production use.
 - Workspace identity fields (`id`, `created_by`, `created_at`) are immutable at the database layer; mutable workspace metadata remains subject to owner/admin RLS authorization.
+- Every `SECURITY DEFINER` RPC/helper pins `search_path` to empty and restricts execution grants; `create_workspace` verifies `auth.uid()` before any write.
 - Never put service-role keys or database credentials in `NEXT_PUBLIC_*` variables.
 - Do not run this migration against unrelated existing projects such as `MTA DETENI` or `galleryabah`.
 
