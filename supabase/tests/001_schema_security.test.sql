@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(32);
+select plan(33);
 
 select has_table('public', 'workspaces', 'workspaces table exists');
 select has_table('public', 'workspace_members', 'workspace_members table exists');
@@ -28,6 +28,7 @@ select ok((select relrowsecurity from pg_class where oid = 'public.audit_events'
 select has_function('public', 'is_workspace_member', array['uuid'], 'workspace membership helper exists');
 select has_function('public', 'has_workspace_role', array['uuid', 'text[]'], 'workspace role helper exists');
 select has_function('public', 'create_workspace', array['text', 'text'], 'atomic workspace creation RPC exists');
+select ok(coalesce((select array_to_string(p.proconfig, ',') like '%search_path=""%' from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'create_workspace' and pg_get_function_identity_arguments(p.oid) = 'p_name text, p_slug text'), false), 'create_workspace SECURITY DEFINER pins an empty search_path');
 select has_trigger('public', 'topics', 'topics_prevent_parent_cycle', 'topic hierarchy cycle guard exists');
 select has_trigger('public', 'workspaces', 'workspaces_guard_identity', 'workspace ID, creator and creation timestamp are immutable');
 select has_function('public', 'guard_immutable_identity', array[]::text[], 'immutable identity guard exists');
