@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(33);
+select plan(41);
 
 select has_table('public', 'workspaces', 'workspaces table exists');
 select has_table('public', 'workspace_members', 'workspace_members table exists');
@@ -29,6 +29,14 @@ select has_function('public', 'is_workspace_member', array['uuid'], 'workspace m
 select has_function('public', 'has_workspace_role', array['uuid', 'text[]'], 'workspace role helper exists');
 select has_function('public', 'create_workspace', array['text', 'text'], 'atomic workspace creation RPC exists');
 select ok(coalesce((select array_to_string(p.proconfig, ',') like '%search_path=""%' from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'create_workspace' and pg_get_function_identity_arguments(p.oid) = 'p_name text, p_slug text'), false), 'create_workspace SECURITY DEFINER pins an empty search_path');
+select ok((select proconfig @> array['search_path=""'] from pg_proc where oid = 'public.is_workspace_member(uuid)'::regprocedure), 'is_workspace_member pins an empty search_path');
+select ok((select proconfig @> array['search_path=""'] from pg_proc where oid = 'public.has_workspace_role(uuid,text[])'::regprocedure), 'has_workspace_role pins an empty search_path');
+select ok(not has_function_privilege('anon', 'public.is_workspace_member(uuid)', 'EXECUTE'), 'anon cannot execute is_workspace_member');
+select ok(not has_function_privilege('anon', 'public.has_workspace_role(uuid,text[])', 'EXECUTE'), 'anon cannot execute has_workspace_role');
+select ok(not has_function_privilege('anon', 'public.create_workspace(text,text)', 'EXECUTE'), 'anon cannot execute create_workspace');
+select ok(has_function_privilege('authenticated', 'public.is_workspace_member(uuid)', 'EXECUTE'), 'authenticated can evaluate workspace membership policy');
+select ok(has_function_privilege('authenticated', 'public.has_workspace_role(uuid,text[])', 'EXECUTE'), 'authenticated can evaluate workspace role policy');
+select ok(has_function_privilege('authenticated', 'public.create_workspace(text,text)', 'EXECUTE'), 'authenticated can create a workspace through the RPC');
 select has_trigger('public', 'topics', 'topics_prevent_parent_cycle', 'topic hierarchy cycle guard exists');
 select has_trigger('public', 'workspaces', 'workspaces_guard_identity', 'workspace ID, creator and creation timestamp are immutable');
 select has_function('public', 'guard_immutable_identity', array[]::text[], 'immutable identity guard exists');
