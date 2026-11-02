@@ -11,8 +11,8 @@ select has_table('public', 'map_edges', 'map_edges table exists');
 select has_table('public', 'map_revisions', 'map_revisions table exists');
 select has_table('public', 'audit_events', 'audit_events table exists');
 
-select col_type('public', 'topics', 'id', 'text', 'topic IDs preserve canonical string identifiers');
-select col_type('public', 'map_edges', 'id', 'text', 'cross-link IDs preserve canonical string identifiers');
+select col_type('public', 'topics', 'id', 'text');
+select col_type('public', 'map_edges', 'id', 'text');
 select has_index('public', 'topics', 'topics_one_root_per_map_idx', 'each map is limited to one root topic');
 select has_check('public', 'topics', 'topics_root_identity', 'root topic identity matches canonical graph contract');
 select has_index('public', 'map_edges', 'map_edges_unique_undirected_idx', 'reversed duplicate cross-links are rejected');
