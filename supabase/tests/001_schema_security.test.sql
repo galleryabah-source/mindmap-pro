@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(41);
+select plan(53);
 
 select has_table('public', 'workspaces', 'workspaces table exists');
 select has_table('public', 'workspace_members', 'workspace_members table exists');
@@ -44,6 +44,18 @@ select has_trigger('public', 'maps', 'maps_guard_identity', 'map workspace owner
 select has_trigger('public', 'topics', 'topics_guard_identity', 'topic identity and map scope cannot be reassigned');
 select has_trigger('public', 'map_edges', 'map_edges_guard_identity', 'cross-link identity and map scope cannot be reassigned');
 
+select ok(not has_table_privilege('authenticated', 'public.maps', 'INSERT'), 'authenticated role cannot directly insert maps');
+select ok(not has_table_privilege('authenticated', 'public.maps', 'UPDATE'), 'authenticated role cannot directly update maps');
+select ok(not has_table_privilege('authenticated', 'public.maps', 'DELETE'), 'authenticated role cannot directly delete maps');
+select ok(not has_table_privilege('authenticated', 'public.topics', 'INSERT'), 'authenticated role cannot directly insert topics');
+select ok(not has_table_privilege('authenticated', 'public.topics', 'UPDATE'), 'authenticated role cannot directly update topics');
+select ok(not has_table_privilege('authenticated', 'public.topics', 'DELETE'), 'authenticated role cannot directly delete topics');
+select ok(not has_table_privilege('authenticated', 'public.map_edges', 'INSERT'), 'authenticated role cannot directly insert cross-links');
+select ok(not has_table_privilege('authenticated', 'public.map_edges', 'UPDATE'), 'authenticated role cannot directly update cross-links');
+select ok(not has_table_privilege('authenticated', 'public.map_edges', 'DELETE'), 'authenticated role cannot directly delete cross-links');
+select ok(has_table_privilege('authenticated', 'public.maps', 'SELECT'), 'authenticated role retains RLS-scoped map reads');
+select ok(has_table_privilege('authenticated', 'public.topics', 'SELECT'), 'authenticated role retains RLS-scoped topic reads');
+select ok(has_table_privilege('authenticated', 'public.map_edges', 'SELECT'), 'authenticated role retains RLS-scoped cross-link reads');
 select ok(not has_table_privilege('authenticated', 'public.workspace_members', 'INSERT'), 'authenticated role cannot directly change membership');
 select ok(not has_table_privilege('authenticated', 'public.audit_events', 'INSERT'), 'authenticated role cannot directly insert audit events');
 select ok(not has_table_privilege('authenticated', 'public.map_revisions', 'UPDATE'), 'authenticated role cannot update revisions');
