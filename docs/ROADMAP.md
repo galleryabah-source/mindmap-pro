@@ -30,7 +30,7 @@ See [Brainstorm Backlog](BRAINSTORM_BACKLOG.md) for the full feature inventory, 
 - Implement map/topic/edge domain model with stable IDs and validated hierarchy/cross-links.
 - Add create, edit, delete, move, reorder, nest, collapse/expand, pan/zoom and focused-branch navigation.
 - Provide keyboard-accessible outline/tree editing as an alternative to canvas interaction.
-- Implement deterministic commands, undo/redo, autosave status, revision conflict handling and recoverable drafts.
+- Implement deterministic commands, undo/redo, autosave status, revision conflict handling and recoverable drafts. The backend contract and atomic save/restore gates are specified in [Canonical Graph Persistence Contract](CANONICAL_GRAPH_PERSISTENCE_CONTRACT.md).
 - Implement JSON schema validation and import/export round-trip tests.
 - Build the initial responsive editor shell with loading, empty, error, offline and permission-denied states.
 
