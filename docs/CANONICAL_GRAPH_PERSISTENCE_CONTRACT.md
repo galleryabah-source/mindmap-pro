@@ -65,10 +65,12 @@ Design contract for the next backend milestone. This document does not enable cl
 | Other supported node data/type fields | `topics.metadata` |
 | `edges[].id/source/target` | `map_edges.id/source_topic_id/target_topic_id` |
 | `edges[].label/style` | `map_edges.label/style` |
-| Other supported edge fields | Versioned edge metadata column or explicit schema extension |
+| Other supported edge fields | `map_edges.metadata` (`jsonb` object) |
 | Full canonical document | `map_revisions.snapshot` |
 
-The full snapshot is the authoritative recovery and round-trip artifact. Relational columns support indexing, integrity and access patterns. Serialization must be deterministic and tested against import/export fixtures.
+The full snapshot is the authoritative recovery and round-trip artifact. Relational columns support indexing, integrity and access patterns. `map_edges.metadata` stores supported edge fields that do not have dedicated relational columns; it must remain a JSON object and must be included in serialization. The migration `202611160001_graph_persistence_foundation.sql` adds this column without granting direct client write access. Serialization must be deterministic and tested against import/export fixtures.
+
+The same migration adds `graph_mutation_requests`, a private idempotency ledger. Its unique `(actor_user_id, request_id)` key scopes retries to the authenticated actor. Each row records operation, canonical payload SHA-256, optional workspace/map references, response and completion timestamps. Resource references use `ON DELETE SET NULL` so deleting a map or workspace does not silently erase the request key and permit an old retry to create a duplicate. RLS is enabled and direct `anon`/`authenticated` privileges are revoked. The ledger is schema support only: no graph RPC currently consumes it, and it does not enable cloud persistence.
 
 ## Error contract
 
@@ -100,8 +102,8 @@ The full snapshot is the authoritative recovery and round-trip artifact. Relatio
 ## Delivery sequence
 
 1. Keep direct graph writes revoked (current hardening gate).
-2. Implement migration with edge metadata and idempotency ledger only after schema mapping is finalized.
-3. Implement and test RPCs in isolated local PostgreSQL.
+2. **Implemented in the isolated migration branch:** add edge metadata and a private idempotency ledger; verify schema and privilege boundaries with pgTAP.
+3. Implement `create_map`, `save_map_snapshot` and `restore_map_revision` against the finalized schema; test authorization, idempotency, atomic rollback and concurrent revision conflicts in isolated local PostgreSQL.
 4. Add typed server-only API wrappers; never call mutation RPCs from an untrusted browser path without server-side auth/session validation.
 5. Add API contract tests and browser tests for conflict/recovery states.
 6. Enable cloud persistence behind an explicit capability flag only after a dedicated Supabase project passes RLS, Auth, pgTAP, backup and restore gates.
