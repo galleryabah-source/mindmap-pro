@@ -42,8 +42,8 @@ select set_config(
 reset role;
 commit;
 
-select is(extensions.dblink_connect('rpc_a','dbname=postgres'), 'OK', 'first independent database session connects');
-select is(extensions.dblink_connect('rpc_b','dbname=postgres'), 'OK', 'second independent database session connects');
+select is(extensions.dblink_connect('rpc_a','host=127.0.0.1 port=5432 dbname=postgres user=postgres password=postgres'), 'OK', 'first independent database session connects');
+select is(extensions.dblink_connect('rpc_b','host=127.0.0.1 port=5432 dbname=postgres user=postgres password=postgres'), 'OK', 'second independent database session connects');
 
 select extensions.dblink_exec('rpc_a','set request.jwt.claim.sub = ''33333333-3333-4333-8333-333333333333''');
 select extensions.dblink_exec('rpc_a','set role authenticated');
