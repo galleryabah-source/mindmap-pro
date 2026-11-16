@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { readJsonBody } from "../lib/server/private-json";
 import {
   isSameOriginRequest,
   isUuid,
@@ -112,5 +113,40 @@ describe("canonical graph API contract", () => {
       headers: { origin: "https://attacker.example" },
     }))).toBe(false);
     expect(isSameOriginRequest(new Request("https://app.example/api/maps", { method: "POST" }))).toBe(false);
+  });
+});
+
+
+describe("private JSON request boundary", () => {
+  it("parses bounded JSON bodies", async () => {
+    const request = new Request("https://app.example/api/maps", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ ok: true }),
+    });
+    await expect(readJsonBody(request)).resolves.toEqual({ ok: true, value: { ok: true } });
+  });
+
+  it("rejects unsupported media types, malformed JSON and oversized bodies", async () => {
+    const wrongType = new Request("https://app.example/api/maps", {
+      method: "POST",
+      headers: { "content-type": "text/plain" },
+      body: "{}",
+    });
+    expect(await readJsonBody(wrongType)).toMatchObject({ ok: false, status: 415 });
+
+    const malformed = new Request("https://app.example/api/maps", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: "{",
+    });
+    expect(await readJsonBody(malformed)).toMatchObject({ ok: false, status: 400 });
+
+    const oversized = new Request("https://app.example/api/maps", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: "12345",
+    });
+    expect(await readJsonBody(oversized, 4)).toMatchObject({ ok: false, status: 413 });
   });
 });
