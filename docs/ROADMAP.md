@@ -158,3 +158,17 @@ The approved detailed specification is [UI/UX and Front-End Architecture](UI_UX_
 - UI-02D — PR #42: server-verified account identity, sign-in entry, sign-out and responsive account menu. Exact-head CI and browser UAT remain required.
 - These are stacked pull requests; merge in dependency order only after each exact-head quality gate passes. Do not deploy or activate account flows until Supabase Auth redirect configuration, database migration and RLS/RPC behavior are verified in the target environment.
 
+
+
+## Backend persistence execution status — 17 November 2026
+
+The backend persistence work is being delivered as a stacked, evidence-gated series of pull requests. These are implementation candidates until their exact-head CI, review and environment gates are accepted; an open PR is not a production release.
+
+- **PR #45 — workspace identity guard:** database identity immutability guard and pgTAP assertion. Exact-head CI previously passed; hosted database validation remains outstanding.
+- **PR #47 — SECURITY DEFINER hardening:** empty pinned search paths, schema-qualified built-ins, and restricted helper execution. Exact-head CI passed.
+- **PR #48 — database CI:** isolated Supabase migration and pgTAP job. Exact-head CI passed, including database migration tests.
+- **PR #49 — RPC-only graph write boundary:** direct client INSERT/UPDATE/DELETE revoked for maps, topics and cross-links; RLS-scoped reads remain. Exact-head CI passed.
+- **PR #50 — graph persistence schema foundation:** edge metadata and private idempotency ledger, without enabling client writes. Exact-head CI passed.
+- **PR #51 — atomic graph mutation RPCs:** create, save, restore, canonical graph validation, idempotency, immutable revisions and audit events. Initial CI exposed test-fixture defects; corrections are pushed and exact-head CI is running again.
+
+**Current release blockers:** PR #51 database behavior/concurrency suite must pass; server-only API wrappers and API contract tests must be implemented; dedicated MindMap Pro Supabase project and authenticated tenant test users must be provisioned; migrations, RLS, Auth, backup/restore and Browser UAT must be verified. Direct graph table writes remain revoked. No hosted migration, PR merge, or production deployment is authorized by this status update.
