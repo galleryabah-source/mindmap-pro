@@ -2,7 +2,7 @@
 
 ## Status
 
-Implementation contract. PR #50 adds the edge-metadata and private idempotency schema foundation. PR #51 adds candidate atomic create/save/restore RPCs and isolated database behavior/concurrency tests. Exact-head CI is being revalidated after test-fixture corrections. This work does not enable cloud graph writes: the editor remains local-first until all RPC, authorization, revision, audit, API, hosted-environment and recovery gates below are independently verified.
+Implementation contract. PR #50 adds the edge-metadata and private idempotency schema foundation. PR #51 adds atomic create/save/restore RPCs and isolated database behavior tests. Exact-head CI passed. The CI suite verifies row-lock presence and stale-revision behavior; a true two-session race test remains a mandatory dedicated-staging gate because the pgTAP container cannot establish the required second authenticated session. This work does not enable cloud graph writes: the editor remains local-first until all RPC, authorization, revision, audit, API, hosted-environment and recovery gates below are independently verified.
 
 ## Non-negotiable invariants
 
