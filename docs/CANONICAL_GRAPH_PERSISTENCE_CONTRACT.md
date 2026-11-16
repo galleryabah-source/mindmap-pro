@@ -90,7 +90,7 @@ The same migration adds `graph_mutation_requests`, a private idempotency ledger.
 - Viewer can read but cannot create, save or restore.
 - Editor can mutate only maps in workspaces where they are a member.
 - Cross-workspace map IDs cannot be read or mutated by another tenant.
-- Root identity, missing parents, cycles, duplicate IDs, duplicate/reversed cross-links, self-links, out-of-range coordinates and oversized JSON are rejected.
+- Root identity, missing parents, cycles, duplicate IDs, duplicate/reversed cross-links, self-links, hierarchy/cross-link identifier collisions, out-of-range coordinates and oversized JSON are rejected.
 - A failed mutation leaves topics, edges, map revision, revision snapshot and audit log unchanged.
 - Two concurrent saves using the same expected revision yield exactly one success and one conflict.
 - Retrying an identical request ID/payload does not create a second revision or audit event.
