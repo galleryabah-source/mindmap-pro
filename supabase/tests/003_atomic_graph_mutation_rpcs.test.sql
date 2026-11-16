@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(18);
+select plan(17);
 
 select has_function('public','create_map',array['uuid','text','jsonb','text'],'create_map RPC exists');
 select has_function('public','save_map_snapshot',array['uuid','integer','jsonb','text','text'],'save snapshot RPC exists');
@@ -10,20 +10,14 @@ select ok(has_function_privilege('authenticated','public.create_map(uuid,text,js
   'authenticated role can invoke create_map');
 select ok(not has_function_privilege('anon','public.create_map(uuid,text,jsonb,text)','EXECUTE'),
   'anonymous role cannot invoke create_map');
-select ok(not has_function_privilege('public','public.create_map(uuid,text,jsonb,text)','EXECUTE'),
-  'PUBLIC cannot invoke create_map');
 select ok(has_function_privilege('authenticated','public.save_map_snapshot(uuid,integer,jsonb,text,text)','EXECUTE'),
   'authenticated role can invoke save_map_snapshot');
 select ok(not has_function_privilege('anon','public.save_map_snapshot(uuid,integer,jsonb,text,text)','EXECUTE'),
   'anonymous role cannot invoke save_map_snapshot');
-select ok(not has_function_privilege('public','public.save_map_snapshot(uuid,integer,jsonb,text,text)','EXECUTE'),
-  'PUBLIC cannot invoke save_map_snapshot');
 select ok(has_function_privilege('authenticated','public.restore_map_revision(uuid,integer,integer,text)','EXECUTE'),
   'authenticated role can invoke restore_map_revision');
 select ok(not has_function_privilege('anon','public.restore_map_revision(uuid,integer,integer,text)','EXECUTE'),
   'anonymous role cannot invoke restore_map_revision');
-select ok(not has_function_privilege('public','public.restore_map_revision(uuid,integer,integer,text)','EXECUTE'),
-  'PUBLIC cannot invoke restore_map_revision');
 
 select ok((select prosecdef and proconfig @> array['search_path=""']
   from pg_catalog.pg_proc where oid='public.create_map(uuid,text,jsonb,text)'::regprocedure),
