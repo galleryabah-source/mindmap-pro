@@ -38,7 +38,7 @@ export function isUuid(value: unknown): value is string {
 export function parseRequestId(value: string | null): string | null {
   if (typeof value !== "string") return null;
   const requestId = value.trim();
-  if (!requestId || requestId.length > 128 || /[\\u0000-\\u001f\\u007f]/.test(requestId)) return null;
+  if (!requestId || requestId.length > 128 || /[\u0000-\u001f\u007f]/.test(requestId)) return null;
   return requestId;
 }
 
