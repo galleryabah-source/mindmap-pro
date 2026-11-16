@@ -136,51 +136,51 @@ select is(
 );
 
 select throws_ok(
-  $select public.save_map_snapshot(
+  $query$select public.save_map_snapshot(
     current_setting('test.map_id')::uuid, 3,
     '{"version":1,"title":"Duplicate IDs","nodes":[{"id":"root","parentId":null,"position":{"x":0,"y":0},"data":{"label":"Root"}},{"id":"root","parentId":null,"position":{"x":1,"y":1},"data":{"label":"Duplicate"}}],"edges":[]}'::jsonb,
     'duplicate IDs', 'rpc-invalid-duplicate-node'
-  )$,
+  )$query$,
   '22023', 'INVALID_GRAPH: duplicate topic IDs',
   'duplicate canonical topic IDs are rejected'
 );
 
 select throws_ok(
-  $select public.save_map_snapshot(
+  $query$select public.save_map_snapshot(
     current_setting('test.map_id')::uuid, 3,
     '{"version":1,"title":"Missing Parent","nodes":[{"id":"root","parentId":null,"position":{"x":0,"y":0},"data":{"label":"Root"}},{"id":"child","parentId":"missing","position":{"x":1,"y":1},"data":{"label":"Child"}}],"edges":[]}'::jsonb,
     'missing parent', 'rpc-invalid-parent'
-  )$,
+  )$query$,
   '22023', 'INVALID_GRAPH: a topic references a missing parent',
   'topics referencing a missing parent are rejected'
 );
 
 select throws_ok(
-  $select public.save_map_snapshot(
+  $query$select public.save_map_snapshot(
     current_setting('test.map_id')::uuid, 3,
     '{"version":1,"title":"Cycle","nodes":[{"id":"root","parentId":null,"position":{"x":0,"y":0},"data":{"label":"Root"}},{"id":"a","parentId":"b","position":{"x":1,"y":1},"data":{"label":"A"}},{"id":"b","parentId":"a","position":{"x":2,"y":2},"data":{"label":"B"}}],"edges":[]}'::jsonb,
     'cycle', 'rpc-invalid-cycle'
-  )$,
+  )$query$,
   '22023', 'INVALID_GRAPH: hierarchy must be an acyclic tree rooted at root',
   'cyclic hierarchy is rejected'
 );
 
 select throws_ok(
-  $select public.save_map_snapshot(
+  $query$select public.save_map_snapshot(
     current_setting('test.map_id')::uuid, 3,
     '{"version":1,"title":"Self Link","nodes":[{"id":"root","parentId":null,"position":{"x":0,"y":0},"data":{"label":"Root"}}],"edges":[{"id":"link-self","source":"root","target":"root","type":"cross_link"}]}'::jsonb,
     'self link', 'rpc-invalid-self-link'
-  )$,
+  )$query$,
   '22023', 'INVALID_GRAPH: one or more cross-links are malformed',
   'cross-links cannot point from a topic to itself'
 );
 
 select throws_ok(
-  $select public.save_map_snapshot(
+  $query$select public.save_map_snapshot(
     current_setting('test.map_id')::uuid, 3,
     '{"version":1,"title":"Duplicate Links","nodes":[{"id":"root","parentId":null,"position":{"x":0,"y":0},"data":{"label":"Root"}},{"id":"child","parentId":"root","position":{"x":1,"y":1},"data":{"label":"Child"}}],"edges":[{"id":"link-a","source":"root","target":"child","type":"cross_link"},{"id":"link-b","source":"child","target":"root","type":"cross_link"}]}'::jsonb,
     'duplicate links', 'rpc-invalid-duplicate-link'
-  )$,
+  )$query$,
   '22023', 'INVALID_GRAPH: duplicate cross-links',
   'reversed duplicate cross-links are rejected'
 );
@@ -201,13 +201,13 @@ select throws_ok(
 
 select set_config('request.jwt.claim.sub','33333333-3333-4333-8333-333333333333',true);
 select throws_ok(
-  $select public.save_map_snapshot(
+  $query$select public.save_map_snapshot(
     current_setting('test.map_id')::uuid,
     3,
     '{"version":1,"title":"Outsider write","nodes":[{"id":"root","parentId":null,"position":{"x":0,"y":0},"data":{"label":"Root"}}],"edges":[]}'::jsonb,
     'outsider attempt',
     'rpc-outsider-write'
-  )$,
+  )$query$,
   'P0002',
   'MAP_NOT_FOUND',
   'non-member cannot distinguish an inaccessible map from a missing map'
