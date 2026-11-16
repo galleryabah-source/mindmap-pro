@@ -25,6 +25,15 @@ export async function GET(request: Request, context: RouteContext) {
     const auth = await requireAuthenticatedSupabase();
     if (!auth.supabase) return auth.response;
 
+    const { data: map, error: mapError } = await auth.supabase
+      .from("maps")
+      .select("id")
+      .eq("id", mapId)
+      .is("deleted_at", null)
+      .maybeSingle();
+    if (mapError) return graphDatabaseErrorResponse(mapError);
+    if (!map) return graphProblemResponse(404, "MAP_NOT_FOUND", "Mind map tidak ditemukan atau tidak dapat diakses.");
+
     let query = auth.supabase
       .from("map_revisions")
       .select("revision, schema_version, created_at, created_by, note")
@@ -37,7 +46,7 @@ export async function GET(request: Request, context: RouteContext) {
     const { data, error } = await query;
     if (error) return graphDatabaseErrorResponse(error);
     if (!data?.length) {
-      return graphProblemResponse(404, "MAP_NOT_FOUND", "Mind map tidak ditemukan atau tidak memiliki riwayat revisi yang dapat diakses.");
+      return privateJson({ data: [], pagination: { limit, hasMore: false, nextBefore: null } });
     }
 
     const hasMore = data.length > limit;
