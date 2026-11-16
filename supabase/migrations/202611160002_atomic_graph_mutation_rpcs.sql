@@ -17,11 +17,11 @@ declare
   v_root_count integer;
   v_bad_count integer;
 begin
-  if p_graph is null or pg_catalog.jsonb_typeof(p_graph) <> 'object'
-     or p_graph ->> 'version' <> '1'
-     or pg_catalog.jsonb_typeof(p_graph -> 'nodes') <> 'array'
-     or pg_catalog.jsonb_typeof(p_graph -> 'edges') <> 'array'
-     or pg_catalog.jsonb_typeof(p_graph -> 'title') <> 'string'
+  if p_graph is null or coalesce(pg_catalog.jsonb_typeof(p_graph), '') <> 'object'
+     or coalesce(p_graph ->> 'version', '') <> '1'
+     or coalesce(pg_catalog.jsonb_typeof(p_graph -> 'nodes'), '') <> 'array'
+     or coalesce(pg_catalog.jsonb_typeof(p_graph -> 'edges'), '') <> 'array'
+     or coalesce(pg_catalog.jsonb_typeof(p_graph -> 'title'), '') <> 'string'
      or pg_catalog.length(pg_catalog.btrim(p_graph ->> 'title')) not between 1 and 240
      or pg_catalog.octet_length(p_graph::text) > 8000000 then
     raise exception 'INVALID_GRAPH: document envelope is invalid' using errcode = '22023';
@@ -326,9 +326,6 @@ begin
   if not public.has_workspace_role(v_map.workspace_id,array['owner','admin','editor']) then
     raise exception 'FORBIDDEN' using errcode = '42501';
   end if;
-  if p_expected_revision is null or p_expected_revision <> v_map.revision then
-    raise exception 'REVISION_CONFLICT' using errcode = '40001';
-  end if;
   v_graph := coalesce(p_graph,'{}'::jsonb);
   perform private.validate_graph_document(v_graph);
   v_hash := pg_catalog.encode(extensions.digest(pg_catalog.convert_to(
@@ -337,6 +334,9 @@ begin
     'sha256'),'hex');
   v_replay := private.claim_graph_mutation(v_actor,p_request_id,'save_map_snapshot',v_hash,v_map.workspace_id,p_map_id);
   if v_replay is not null then return v_replay; end if;
+  if p_expected_revision is null or p_expected_revision <> v_map.revision then
+    raise exception 'REVISION_CONFLICT' using errcode = '40001';
+  end if;
 
   v_revision := v_map.revision + 1;
   perform private.replace_graph_content(p_map_id,v_actor,v_graph);
@@ -376,9 +376,6 @@ begin
   if not public.has_workspace_role(v_map.workspace_id,array['owner','admin','editor']) then
     raise exception 'FORBIDDEN' using errcode = '42501';
   end if;
-  if p_expected_revision is null or p_expected_revision <> v_map.revision then
-    raise exception 'REVISION_CONFLICT' using errcode = '40001';
-  end if;
   select snapshot into v_graph from public.map_revisions
   where map_id=p_map_id and revision=p_source_revision;
   if not found then raise exception 'MAP_NOT_FOUND: source revision not found' using errcode = 'P0002'; end if;
@@ -389,6 +386,9 @@ begin
     'sha256'),'hex');
   v_replay := private.claim_graph_mutation(v_actor,p_request_id,'restore_map_revision',v_hash,v_map.workspace_id,p_map_id);
   if v_replay is not null then return v_replay; end if;
+  if p_expected_revision is null or p_expected_revision <> v_map.revision then
+    raise exception 'REVISION_CONFLICT' using errcode = '40001';
+  end if;
 
   v_revision := v_map.revision + 1;
   perform private.replace_graph_content(p_map_id,v_actor,v_graph);
