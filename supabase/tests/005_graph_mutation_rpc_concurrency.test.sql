@@ -18,7 +18,7 @@ create or replace function public.test_graph_rpc_concurrency_attempt(
 returns text
 language plpgsql
 set search_path = ''
-as $
+as $$
 begin
   perform public.save_map_snapshot(p_map_id,1,p_graph,'concurrency test',p_request_id);
   return 'SUCCESS';
