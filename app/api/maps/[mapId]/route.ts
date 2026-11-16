@@ -34,7 +34,7 @@ export async function GET(_request: Request, context: RouteContext) {
 
     if (revisionError) return graphDatabaseErrorResponse(revisionError);
     const graph = parseCanonicalGraph(revision?.snapshot);
-    if (!revision || !graph || revision.revision !== map.revision) {
+    if (!revision || !graph || revision.revision !== map.revision || revision.schema_version !== map.schema_version) {
       return graphProblemResponse(503, "SNAPSHOT_UNAVAILABLE", "Snapshot canonical mind map tidak tersedia atau tidak konsisten.");
     }
 
