@@ -38,7 +38,7 @@ select ok(private.is_safe_graph_json('{"nested":{"value":[1,true,null]}}'::jsonb
   'bounded JSON metadata is accepted');
 select ok(not private.is_safe_graph_json('{"a":{"b":{"c":{"d":{"e":{"f":{"g":{"h":{"i":{"j":{"k":{"l":{"m":1}}}}}}}}}}}}'::jsonb),
   'metadata deeper than the canonical depth limit is rejected');
-select ok(not private.is_safe_graph_json((select pg_catalog.jsonb_object_agg('key-' || n, n) from pg_catalog.generate_series(1,201) n),
+select ok(not private.is_safe_graph_json((select pg_catalog.jsonb_object_agg('key-' || n, n) from pg_catalog.generate_series(1,201) as series(n))),
   'objects exceeding the canonical key limit are rejected');
 
 select * from finish();
