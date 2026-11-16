@@ -369,6 +369,9 @@ begin
   if v_actor is null then raise exception 'AUTH_REQUIRED' using errcode = '42501'; end if;
   select * into v_map from public.maps where id = p_map_id and deleted_at is null for update;
   if not found then raise exception 'MAP_NOT_FOUND' using errcode = 'P0002'; end if;
+  if not public.is_workspace_member(v_map.workspace_id) then
+    raise exception 'MAP_NOT_FOUND' using errcode = 'P0002';
+  end if;
   if not public.has_workspace_role(v_map.workspace_id,array['owner','admin','editor']) then
     raise exception 'FORBIDDEN' using errcode = '42501';
   end if;
@@ -419,6 +422,9 @@ begin
   if v_actor is null then raise exception 'AUTH_REQUIRED' using errcode = '42501'; end if;
   select * into v_map from public.maps where id=p_map_id and deleted_at is null for update;
   if not found then raise exception 'MAP_NOT_FOUND' using errcode = 'P0002'; end if;
+  if not public.is_workspace_member(v_map.workspace_id) then
+    raise exception 'MAP_NOT_FOUND' using errcode = 'P0002';
+  end if;
   if not public.has_workspace_role(v_map.workspace_id,array['owner','admin','editor']) then
     raise exception 'FORBIDDEN' using errcode = '42501';
   end if;
