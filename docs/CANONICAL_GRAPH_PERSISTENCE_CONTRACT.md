@@ -2,7 +2,7 @@
 
 ## Status
 
-Design contract for the next backend milestone. This document does not enable cloud graph writes. The editor remains local-first until the RPC, authorization, revision, audit and recovery gates below are implemented and verified.
+Implementation contract. PR #50 adds the edge-metadata and private idempotency schema foundation. PR #51 adds candidate atomic create/save/restore RPCs and isolated database behavior/concurrency tests. Exact-head CI is being revalidated after test-fixture corrections. This work does not enable cloud graph writes: the editor remains local-first until all RPC, authorization, revision, audit, API, hosted-environment and recovery gates below are independently verified.
 
 ## Non-negotiable invariants
 
