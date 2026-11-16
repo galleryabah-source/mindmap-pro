@@ -11,7 +11,7 @@ export type JsonBodyResult =
   | { ok: true; value: unknown }
   | { ok: false; status: number; code: string; message: string };
 
-export async function readJsonBody(request: Request, maxBytes = 8 * 1024 * 1024): Promise<JsonBodyResult> {
+export async function readJsonBody(request: Request, maxBytes = 8_000_000): Promise<JsonBodyResult> {
   const contentType = request.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase();
   if (contentType !== "application/json") {
     return { ok: false, status: 415, code: "UNSUPPORTED_MEDIA_TYPE", message: "Gunakan Content-Type application/json." };
