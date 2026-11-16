@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { mapGraphDatabaseError } from "@/lib/server/graph-api";
 import { privateJson } from "@/lib/server/private-json";
+import { isSameOriginRequest } from "@/lib/server/graph-api";
 
 export async function requireAuthenticatedSupabase() {
   const supabase = await createClient();
@@ -27,4 +28,13 @@ export function graphDatabaseErrorResponse(error: { code?: string; message?: str
 
 export function graphProblemResponse(status: number, code: string, message: string) {
   return privateJson({ error: { code, message } }, { status });
+}
+
+
+export function requireSameOriginMutation(request: Request) {
+  if (isSameOriginRequest(request)) return null;
+  return privateJson(
+    { error: { code: "ORIGIN_NOT_ALLOWED", message: "Permintaan perubahan harus berasal dari origin aplikasi yang sama." } },
+    { status: 403 },
+  );
 }
