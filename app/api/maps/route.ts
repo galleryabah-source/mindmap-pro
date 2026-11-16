@@ -1,4 +1,4 @@
-import { requireAuthenticatedSupabase, graphDatabaseErrorResponse, graphProblemResponse } from "@/lib/server/graph-route";
+import { requireAuthenticatedSupabase, graphDatabaseErrorResponse, graphProblemResponse, requireSameOriginMutation } from "@/lib/server/graph-route";
 import { isUuid, parseCanonicalGraph, parseCreateMapInput, parseGraphRpcResult, parseRequestId } from "@/lib/server/graph-api";
 import { privateJson, readJsonBody } from "@/lib/server/private-json";
 
@@ -31,6 +31,8 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const originProblem = requireSameOriginMutation(request);
+    if (originProblem) return originProblem;
     const auth = await requireAuthenticatedSupabase();
     if (!auth.supabase) return auth.response;
 
