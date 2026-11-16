@@ -44,6 +44,34 @@ begin
 end;
 $$;
 
+create or replace function private.uri_component(p_value text)
+returns text
+language plpgsql
+immutable
+strict
+set search_path = ''
+as $
+declare
+  v_bytes bytea := pg_catalog.convert_to(p_value, 'UTF8');
+  v_output text := '';
+  v_index integer;
+  v_byte integer;
+begin
+  for v_index in 0..pg_catalog.octet_length(v_bytes) - 1 loop
+    v_byte := pg_catalog.get_byte(v_bytes, v_index);
+    if (v_byte between 48 and 57)
+      or (v_byte between 65 and 90)
+      or (v_byte between 97 and 122)
+      or v_byte in (45, 95, 46, 33, 126, 42, 39, 40, 41) then
+      v_output := v_output || pg_catalog.chr(v_byte);
+    else
+      v_output := v_output || '%' || pg_catalog.upper(pg_catalog.lpad(pg_catalog.to_hex(v_byte), 2, '0'));
+    end if;
+  end loop;
+  return v_output;
+end;
+$;
+
 create or replace function private.validate_graph_document(p_graph jsonb)
 returns void
 language plpgsql
@@ -180,6 +208,18 @@ begin
                       where n.value ->> 'id' = e.value ->> 'target')
   ) then
     raise exception 'INVALID_GRAPH: one or more cross-links are malformed' using errcode = '22023';
+  end if;
+
+  if exists (
+    select 1
+    from pg_catalog.jsonb_array_elements(p_graph -> 'edges') e(value)
+    cross join pg_catalog.jsonb_array_elements(p_graph -> 'nodes') n(value)
+    where n.value ->> 'id' <> 'root'
+      and e.value ->> 'id' = 'hierarchy:'
+        || private.uri_component(n.value ->> 'parentId')
+        || ':' || private.uri_component(n.value ->> 'id')
+  ) then
+    raise exception 'INVALID_GRAPH: cross-link ID collides with hierarchy edge ID' using errcode = '22023';
   end if;
 
   if exists (
@@ -468,6 +508,7 @@ grant execute on function public.save_map_snapshot(uuid,integer,jsonb,text,text)
 grant execute on function public.restore_map_revision(uuid,integer,integer,text) to authenticated;
 
 revoke all on function private.is_safe_graph_json(jsonb,integer) from public, anon, authenticated;
+revoke all on function private.uri_component(text) from public, anon, authenticated;
 revoke all on function private.validate_graph_document(jsonb) from public, anon, authenticated;
 revoke all on function private.claim_graph_mutation(uuid,text,text,text,uuid,uuid) from public, anon, authenticated;
 revoke all on function private.complete_graph_mutation(uuid,text,jsonb) from public, anon, authenticated;
