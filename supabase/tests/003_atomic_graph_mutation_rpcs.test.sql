@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(17);
+select plan(14);
 
 select has_function('public','create_map',array['uuid','text','jsonb','text'],'create_map RPC exists');
 select has_function('public','save_map_snapshot',array['uuid','integer','jsonb','text','text'],'save snapshot RPC exists');
