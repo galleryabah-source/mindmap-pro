@@ -1,7 +1,7 @@
 import {
   assertCanonicalGraph,
   type CanonicalGraph,
-} from "@/lib/domain/graph-commands";
+} from "../domain/graph-commands";
 
 export type GraphApiProblem = {
   status: number;
