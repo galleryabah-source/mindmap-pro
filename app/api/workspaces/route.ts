@@ -1,4 +1,5 @@
-import { NextResponse } from "next/server";
+import { privateJson } from "@/lib/server/private-json";
+import { isSameOriginRequest } from "@/lib/server/graph-api";
 import { createClient } from "@/lib/supabase/server";
 import {
   isWorkspaceId,
@@ -7,10 +8,11 @@ import {
 } from "@/lib/server/workspace-api";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 const MAX_WORKSPACE_REQUEST_BYTES = 16 * 1024;
 
 function problem(status: number, code: string, message: string) {
-  return NextResponse.json({ error: { code, message } }, { status });
+  return privateJson({ error: { code, message } }, { status });
 }
 
 async function getAuthenticatedClient() {
@@ -99,7 +101,7 @@ export async function GET() {
       return problem(mapped.status, mapped.code, mapped.message);
     }
 
-    return NextResponse.json({ data: data ?? [] });
+    return privateJson({ data: data ?? [] });
   } catch {
     return problem(503, "PERSISTENCE_UNAVAILABLE", "Layanan workspace belum tersedia.");
   }
@@ -107,6 +109,9 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    if (!isSameOriginRequest(request)) {
+      return problem(403, "ORIGIN_NOT_ALLOWED", "Permintaan perubahan harus berasal dari origin aplikasi yang sama.");
+    }
     if (request.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase() !== "application/json") {
       return problem(415, "UNSUPPORTED_MEDIA_TYPE", "Gunakan Content-Type application/json.");
     }
@@ -136,7 +141,7 @@ export async function POST(request: Request) {
       return problem(502, "INVALID_PERSISTENCE_RESPONSE", "Database mengembalikan ID workspace yang tidak valid.");
     }
 
-    return NextResponse.json({ data: { id: data, ...input } }, { status: 201 });
+    return privateJson({ data: { id: data, ...input } }, { status: 201 });
   } catch {
     return problem(503, "PERSISTENCE_UNAVAILABLE", "Layanan workspace belum tersedia.");
   }
