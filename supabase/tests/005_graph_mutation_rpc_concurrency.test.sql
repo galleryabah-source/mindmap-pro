@@ -17,7 +17,8 @@ create or replace function public.test_graph_rpc_concurrency_attempt(
 )
 returns text
 language plpgsql
-as $$
+set search_path = ''
+as $
 begin
   perform public.save_map_snapshot(p_map_id,1,p_graph,'concurrency test',p_request_id);
   return 'SUCCESS';
@@ -88,8 +89,8 @@ end;
 $$;
 
 select is(
-  (select array_agg(value order by value)
-   from pg_catalog.unnest(pg_catalog.string_to_array(current_setting('test.concurrent_results'),'|')) value),
+  (select array_agg(result order by result)
+   from pg_catalog.unnest(pg_catalog.string_to_array(current_setting('test.concurrent_results'),'|')) as values_list(result)),
   array['40001:REVISION_CONFLICT','SUCCESS']::text[],
   'two simultaneous writers with the same expected revision produce one commit and one conflict'
 );
