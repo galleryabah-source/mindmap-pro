@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(18);
+select plan(19);
 
 -- Isolated authenticated fixtures. All writes are rolled back at the end of this test.
 insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
@@ -183,6 +183,16 @@ select throws_ok(
   )$query$,
   '22023', 'INVALID_GRAPH: duplicate cross-links',
   'reversed duplicate cross-links are rejected'
+);
+
+select throws_ok(
+  $query$select public.save_map_snapshot(
+    current_setting('test.map_id')::uuid, 3,
+    '{"version":1,"title":"Hierarchy ID Collision","nodes":[{"id":"root","parentId":null,"position":{"x":0,"y":0},"data":{"label":"Root"}},{"id":"child","parentId":"root","position":{"x":1,"y":1},"data":{"label":"Child"}}],"edges":[{"id":"hierarchy:root:child","source":"root","target":"child","type":"cross_link"}]}'::jsonb,
+    'hierarchy ID collision', 'rpc-invalid-hierarchy-edge-id'
+  )$query$,
+  '22023', 'INVALID_GRAPH: cross-link ID collides with hierarchy edge ID',
+  'cross-link IDs cannot collide with generated hierarchy edge IDs'
 );
 
 select set_config('request.jwt.claim.sub','22222222-2222-4222-8222-222222222222',true);
