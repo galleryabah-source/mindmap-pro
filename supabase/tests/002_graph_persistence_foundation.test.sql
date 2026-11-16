@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(17);
+select plan(16);
 
 select has_column('public', 'map_edges', 'metadata', 'cross-links have a metadata column for canonical round-trip');
 select ok((select a.atttypid = 'jsonb'::regtype and a.attnotnull
