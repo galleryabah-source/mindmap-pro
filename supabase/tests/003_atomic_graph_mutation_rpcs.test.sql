@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(17);
+select plan(19);
 
 select has_function('public','create_map',array['uuid','text','jsonb','text'],'create_map RPC exists');
 select has_function('public','save_map_snapshot',array['uuid','integer','jsonb','text','text'],'save snapshot RPC exists');
@@ -49,5 +49,9 @@ select ok(not private.is_safe_graph_json((
 select ok(not private.is_safe_graph_json((select pg_catalog.jsonb_object_agg('key-' || n, n) from pg_catalog.generate_series(1,201) as series(n))),
   'objects exceeding the canonical key limit are rejected');
 
+select is(private.uri_component('a b/é'), 'a%20b%2F%C3%A9',
+  'URI component encoding matches canonical UTF-8 percent encoding');
+select is(private.uri_component('A-z_!~*''().'), 'A-z_!~*''().',
+  'URI component encoding preserves encodeURIComponent unreserved characters');
 select * from finish();
 rollback;

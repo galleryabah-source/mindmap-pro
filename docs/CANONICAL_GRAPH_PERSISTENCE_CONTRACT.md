@@ -2,7 +2,7 @@
 
 ## Status
 
-Implementation contract. PR #50 adds the edge-metadata and private idempotency schema foundation. PR #51 adds candidate atomic create/save/restore RPCs and isolated database behavior/concurrency tests. Exact-head CI is being revalidated after test-fixture corrections. This work does not enable cloud graph writes: the editor remains local-first until all RPC, authorization, revision, audit, API, hosted-environment and recovery gates below are independently verified.
+Implementation contract. PR #50 adds the edge-metadata and private idempotency schema foundation. PR #51 adds atomic create/save/restore RPCs and isolated database behavior tests. Exact-head CI passed. The CI suite verifies row-lock presence and stale-revision behavior; a true two-session race test remains a mandatory dedicated-staging gate because the pgTAP container cannot establish the required second authenticated session. This work does not enable cloud graph writes: the editor remains local-first until all RPC, authorization, revision, audit, API, hosted-environment and recovery gates below are independently verified.
 
 ## Non-negotiable invariants
 
@@ -90,7 +90,7 @@ The same migration adds `graph_mutation_requests`, a private idempotency ledger.
 - Viewer can read but cannot create, save or restore.
 - Editor can mutate only maps in workspaces where they are a member.
 - Cross-workspace map IDs cannot be read or mutated by another tenant.
-- Root identity, missing parents, cycles, duplicate IDs, duplicate/reversed cross-links, self-links, out-of-range coordinates and oversized JSON are rejected.
+- Root identity, missing parents, cycles, duplicate IDs, duplicate/reversed cross-links, self-links, hierarchy/cross-link identifier collisions, out-of-range coordinates and oversized JSON are rejected.
 - A failed mutation leaves topics, edges, map revision, revision snapshot and audit log unchanged.
 - Two concurrent saves using the same expected revision yield exactly one success and one conflict.
 - Retrying an identical request ID/payload does not create a second revision or audit event.
