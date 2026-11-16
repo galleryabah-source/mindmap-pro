@@ -104,7 +104,7 @@ The same migration adds `graph_mutation_requests`, a private idempotency ledger.
 1. Keep direct graph writes revoked (current hardening gate).
 2. **Implemented in the isolated migration branch:** add edge metadata and a private idempotency ledger; verify schema and privilege boundaries with pgTAP.
 3. Implement `create_map`, `save_map_snapshot` and `restore_map_revision` against the finalized schema; test authorization, idempotency, atomic rollback and concurrent revision conflicts in isolated local PostgreSQL.
-4. Add typed server-only API wrappers; never call mutation RPCs from an untrusted browser path without server-side auth/session validation.
+4. Validate RPC behavior with pgTAP and a two-session concurrency test (same expected revision must yield one commit and one REVISION_CONFLICT); add typed server-only API wrappers only after the SQL contract is proven. Never call mutation RPCs from an untrusted browser path without server-side auth/session validation.
 5. Add API contract tests and browser tests for conflict/recovery states.
 6. Enable cloud persistence behind an explicit capability flag only after a dedicated Supabase project passes RLS, Auth, pgTAP, backup and restore gates.
 
