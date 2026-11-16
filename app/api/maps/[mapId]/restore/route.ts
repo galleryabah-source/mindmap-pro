@@ -1,4 +1,4 @@
-import { requireAuthenticatedSupabase, graphDatabaseErrorResponse, graphProblemResponse } from "@/lib/server/graph-route";
+import { requireAuthenticatedSupabase, graphDatabaseErrorResponse, graphProblemResponse, requireSameOriginMutation } from "@/lib/server/graph-route";
 import { isUuid, parseGraphRpcResult, parseRequestId, parseRestoreMapInput } from "@/lib/server/graph-api";
 import { privateJson, readJsonBody } from "@/lib/server/private-json";
 
@@ -9,6 +9,8 @@ type RouteContext = { params: Promise<{ mapId: string }> };
 
 export async function POST(request: Request, context: RouteContext) {
   try {
+    const originProblem = requireSameOriginMutation(request);
+    if (originProblem) return originProblem;
     const { mapId } = await context.params;
     if (!isUuid(mapId)) return graphProblemResponse(404, "MAP_NOT_FOUND", "Mind map tidak ditemukan atau tidak dapat diakses.");
 
