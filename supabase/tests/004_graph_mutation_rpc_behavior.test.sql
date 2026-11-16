@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(13);
+select plan(12);
 
 -- Isolated authenticated fixtures. All writes are rolled back at the end of this test.
 insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
