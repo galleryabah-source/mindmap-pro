@@ -27,6 +27,7 @@ describe("canonical graph API contract", () => {
     expect(parseCanonicalGraph(graph)).toEqual(graph);
     expect(parseCanonicalGraph({ ...graph, nodes: [{ ...graph.nodes[0], parentId: "missing" }] })).toBeNull();
     expect(parseCanonicalGraph({ ...graph, edges: [{ id: "bad", source: "root", target: "root", type: "cross_link" }] })).toBeNull();
+    expect(parseCanonicalGraph({ ...graph, edges: [{ id: "hierarchy:root:child", source: "root", target: "child", type: "cross_link" }] })).toBeNull();
   });
 
   it("validates create-map input and optional title", () => {
