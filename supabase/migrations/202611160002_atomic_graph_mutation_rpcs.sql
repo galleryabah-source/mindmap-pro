@@ -5,6 +5,45 @@ begin;
 create schema if not exists private;
 revoke all on schema private from public, anon, authenticated;
 
+create or replace function private.is_safe_graph_json(p_value jsonb, p_depth integer default 0)
+returns boolean
+language plpgsql
+immutable
+set search_path = ''
+as $
+declare
+  v_count integer;
+  v_item record;
+begin
+  if p_depth > 12 then return false; end if;
+  case pg_catalog.jsonb_typeof(p_value)
+    when 'array' then
+      select pg_catalog.count(*) into v_count
+      from pg_catalog.jsonb_array_elements(p_value);
+      if v_count > 1000 then return false; end if;
+      for v_item in select value from pg_catalog.jsonb_array_elements(p_value) loop
+        if not private.is_safe_graph_json(v_item.value, p_depth + 1) then return false; end if;
+      end loop;
+    when 'object' then
+      select pg_catalog.count(*) into v_count
+      from pg_catalog.jsonb_object_keys(p_value);
+      if v_count > 200 then return false; end if;
+      for v_item in select key, value from pg_catalog.jsonb_each(p_value) loop
+        if pg_catalog.length(v_item.key) > 200
+          or not private.is_safe_graph_json(v_item.value, p_depth + 1) then
+          return false;
+        end if;
+      end loop;
+    when 'string' then return true;
+    when 'number' then return true;
+    when 'boolean' then return true;
+    when 'null' then return true;
+    else return false;
+  end case;
+  return true;
+end;
+$;
+
 create or replace function private.validate_graph_document(p_graph jsonb)
 returns void
 language plpgsql
@@ -38,20 +77,21 @@ begin
     select 1
     from pg_catalog.jsonb_array_elements(p_graph -> 'nodes') n(value)
     where pg_catalog.jsonb_typeof(n.value) <> 'object'
-       or pg_catalog.jsonb_typeof(n.value -> 'id') <> 'string'
-       or pg_catalog.length(n.value ->> 'id') not between 1 and 128
-       or pg_catalog.jsonb_typeof(n.value -> 'position') <> 'object'
-       or pg_catalog.jsonb_typeof(n.value #> '{position,x}') <> 'number'
-       or pg_catalog.jsonb_typeof(n.value #> '{position,y}') <> 'number'
+       or coalesce(pg_catalog.jsonb_typeof(n.value -> 'id'), '') <> 'string'
+       or coalesce(pg_catalog.length(n.value ->> 'id'), 0) not between 1 and 128
+       or coalesce(pg_catalog.jsonb_typeof(n.value -> 'position'), '') <> 'object'
+       or coalesce(pg_catalog.jsonb_typeof(n.value #> '{position,x}'), '') <> 'number'
+       or coalesce(pg_catalog.jsonb_typeof(n.value #> '{position,y}'), '') <> 'number'
        or pg_catalog.abs((n.value #>> '{position,x}')::numeric) > 10000000
        or pg_catalog.abs((n.value #>> '{position,y}')::numeric) > 10000000
-       or pg_catalog.jsonb_typeof(n.value -> 'data') <> 'object'
-       or pg_catalog.jsonb_typeof(n.value #> '{data,label}') <> 'string'
-       or pg_catalog.length(n.value #>> '{data,label}') > 2000
+       or coalesce(pg_catalog.jsonb_typeof(n.value -> 'data'), '') <> 'object'
+       or coalesce(pg_catalog.jsonb_typeof(n.value #> '{data,label}'), '') <> 'string'
+       or coalesce(pg_catalog.length(n.value #>> '{data,label}'), 0) > 2000
        or (n.value #> '{data,notes}' is not null
            and pg_catalog.jsonb_typeof(n.value #> '{data,notes}') <> 'string')
        or pg_catalog.length(coalesce(n.value #>> '{data,notes}', '')) > 50000
-       or (n.value ? 'style' and pg_catalog.jsonb_typeof(n.value -> 'style') <> 'object')
+       or (n.value ? 'style' and coalesce(pg_catalog.jsonb_typeof(n.value -> 'style'), '') <> 'object')
+       or not private.is_safe_graph_json(n.value)
   ) then
     raise exception 'INVALID_GRAPH: one or more topics are malformed' using errcode = '22023';
   end if;
@@ -79,8 +119,8 @@ begin
   if exists (
     select 1 from pg_catalog.jsonb_array_elements(p_graph -> 'nodes') n(value)
     where n.value ->> 'id' <> 'root'
-      and (pg_catalog.jsonb_typeof(n.value -> 'parentId') <> 'string'
-           or pg_catalog.length(n.value ->> 'parentId') not between 1 and 128)
+      and (coalesce(pg_catalog.jsonb_typeof(n.value -> 'parentId'), '') <> 'string'
+           or coalesce(pg_catalog.length(n.value ->> 'parentId'), 0) not between 1 and 128)
   ) then
     raise exception 'INVALID_GRAPH: every non-root topic requires a parent' using errcode = '22023';
   end if;
@@ -122,15 +162,18 @@ begin
     select 1
     from pg_catalog.jsonb_array_elements(p_graph -> 'edges') e(value)
     where pg_catalog.jsonb_typeof(e.value) <> 'object'
-       or pg_catalog.jsonb_typeof(e.value -> 'id') <> 'string'
-       or pg_catalog.length(e.value ->> 'id') not between 1 and 128
-       or pg_catalog.jsonb_typeof(e.value -> 'source') <> 'string'
-       or pg_catalog.jsonb_typeof(e.value -> 'target') <> 'string'
+       or coalesce(pg_catalog.jsonb_typeof(e.value -> 'id'), '') <> 'string'
+       or coalesce(pg_catalog.length(e.value ->> 'id'), 0) not between 1 and 128
+       or coalesce(pg_catalog.jsonb_typeof(e.value -> 'source'), '') <> 'string'
+       or coalesce(pg_catalog.length(e.value ->> 'source'), 0) not between 1 and 128
+       or coalesce(pg_catalog.jsonb_typeof(e.value -> 'target'), '') <> 'string'
+       or coalesce(pg_catalog.length(e.value ->> 'target'), 0) not between 1 and 128
        or e.value ->> 'source' = e.value ->> 'target'
-       or coalesce(e.value ->> 'type', 'cross_link') <> 'cross_link'
-       or (e.value ? 'label' and pg_catalog.jsonb_typeof(e.value -> 'label') <> 'string')
+       or coalesce(e.value ->> 'type', '') <> 'cross_link'
+       or (e.value ? 'label' and coalesce(pg_catalog.jsonb_typeof(e.value -> 'label'), '') <> 'string')
        or pg_catalog.length(coalesce(e.value ->> 'label', '')) > 500
-       or (e.value ? 'style' and pg_catalog.jsonb_typeof(e.value -> 'style') <> 'object')
+       or (e.value ? 'style' and coalesce(pg_catalog.jsonb_typeof(e.value -> 'style'), '') <> 'object')
+       or not private.is_safe_graph_json(e.value)
        or not exists (select 1 from pg_catalog.jsonb_array_elements(p_graph -> 'nodes') n(value)
                       where n.value ->> 'id' = e.value ->> 'source')
        or not exists (select 1 from pg_catalog.jsonb_array_elements(p_graph -> 'nodes') n(value)
@@ -234,7 +277,10 @@ begin
     (n.value #>> '{position,x}')::double precision,
     (n.value #>> '{position,y}')::double precision,
     coalesce(n.value -> 'style', '{}'::jsonb),
-    (n.value -> 'data') - 'label' - 'notes',
+    pg_catalog.jsonb_build_object(
+      'node', n.value - array['id','parentId','position','data','style'],
+      'data', (n.value -> 'data') - array['label','notes']
+    ),
     p_actor
   from pg_catalog.jsonb_array_elements(p_graph -> 'nodes') n(value);
 
@@ -415,6 +461,7 @@ grant execute on function public.create_map(uuid,text,jsonb,text) to authenticat
 grant execute on function public.save_map_snapshot(uuid,integer,jsonb,text,text) to authenticated;
 grant execute on function public.restore_map_revision(uuid,integer,integer,text) to authenticated;
 
+revoke all on function private.is_safe_graph_json(jsonb,integer) from public, anon, authenticated;
 revoke all on function private.validate_graph_document(jsonb) from public, anon, authenticated;
 revoke all on function private.claim_graph_mutation(uuid,text,text,text,uuid,uuid) from public, anon, authenticated;
 revoke all on function private.complete_graph_mutation(uuid,text,jsonb) from public, anon, authenticated;
