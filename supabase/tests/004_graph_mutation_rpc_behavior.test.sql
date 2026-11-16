@@ -1,12 +1,13 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(12);
+select plan(13);
 
 -- Isolated authenticated fixtures. All writes are rolled back at the end of this test.
 insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
 values
  ('11111111-1111-4111-8111-111111111111','authenticated','authenticated','rpc-editor@example.test','',now(),now()),
- ('22222222-2222-4222-8222-222222222222','authenticated','authenticated','rpc-viewer@example.test','',now(),now());
+ ('22222222-2222-4222-8222-222222222222','authenticated','authenticated','rpc-viewer@example.test','',now(),now()),
+ ('33333333-3333-4333-8333-333333333333','authenticated','authenticated','rpc-outsider@example.test','',now(),now());
 
 insert into public.workspaces (id,name,slug,created_by)
 values ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','RPC Test Workspace','rpc-test-workspace','11111111-1111-4111-8111-111111111111');
@@ -146,6 +147,20 @@ select throws_ok(
   '42501',
   'FORBIDDEN',
   'viewer cannot mutate a map in a workspace'
+);
+
+select set_config('request.jwt.claim.sub','33333333-3333-4333-8333-333333333333',true);
+select throws_ok(
+  $select public.save_map_snapshot(
+    current_setting('test.map_id')::uuid,
+    3,
+    '{"version":1,"title":"Outsider write","nodes":[{"id":"root","parentId":null,"position":{"x":0,"y":0},"data":{"label":"Root"}}],"edges":[]}'::jsonb,
+    'outsider attempt',
+    'rpc-outsider-write'
+  )$,
+  'P0002',
+  'MAP_NOT_FOUND',
+  'non-member cannot distinguish an inaccessible map from a missing map'
 );
 
 select * from finish();
