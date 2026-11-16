@@ -32,6 +32,7 @@ Supabase no longer automatically exposes newly created public-schema tables to t
 - Workspace membership is checked in RLS, not only in the UI.
 - `owner`, `admin`, `editor`, and `viewer` are distinct roles. Viewer mutations are not permitted by the RLS policies.
 - The `create_workspace` RPC creates the workspace, owner membership and audit record in one transaction.
+- Direct client INSERT/UPDATE/DELETE on maps, topics and map_edges are revoked until atomic, revision-checked graph RPCs are implemented. Reads remain RLS-scoped.
 - Membership changes and revision writes are intentionally denied to direct client requests until audited server-side RPCs are implemented.
 - Audit events have no direct client write policy. Audited write RPCs/triggers are still required for map/topic/edge mutations before production.
 - The topic parent foreign key prevents cross-map parenting, and a per-map lock plus recursive trigger rejects parent cycles. This requires concurrent database tests before production.
