@@ -10,7 +10,7 @@ returns boolean
 language plpgsql
 immutable
 set search_path = ''
-as $
+as $$
 declare
   v_count integer;
   v_item record;
@@ -42,7 +42,7 @@ begin
   end case;
   return true;
 end;
-$;
+$$;
 
 create or replace function private.validate_graph_document(p_graph jsonb)
 returns void
