@@ -20,8 +20,8 @@ create table if not exists public.graph_mutation_requests (
     check (length(btrim(request_id)) between 1 and 128),
   operation text not null
     check (operation in ('create_map', 'save_map_snapshot', 'restore_map_revision')),
-  workspace_id uuid not null references public.workspaces(id) on delete cascade,
-  map_id uuid references public.maps(id) on delete cascade,
+  workspace_id uuid references public.workspaces(id) on delete set null,
+  map_id uuid references public.maps(id) on delete set null,
   payload_hash text not null
     check (payload_hash ~ '^[0-9a-f]{64}$'),
   response jsonb not null default '{}'::jsonb
