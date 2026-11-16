@@ -50,7 +50,7 @@ language plpgsql
 immutable
 strict
 set search_path = ''
-as $
+as $uri$
 declare
   v_bytes bytea := pg_catalog.convert_to(p_value, 'UTF8');
   v_output text := '';
@@ -70,7 +70,7 @@ begin
   end loop;
   return v_output;
 end;
-$;
+$uri$;
 
 create or replace function private.validate_graph_document(p_graph jsonb)
 returns void
